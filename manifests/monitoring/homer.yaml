@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homer-config
+  namespace: monitoring
+data:
+  config.yml: |
+    title: Homelab
+    services:
+      - name: Monitoring
+        items:
+          - name: Grafana
+            url: https://grafana.homelab.local
+          - name: Prometheus
+            url: https://prometheus.homelab.local
+          - name: Uptime Kuma
+            url: https://uptime-kuma.homelab.local
+      - name: AI
+        items:
+          - name: Open WebUI
+            url: https://open-webui.homelab.local
+          - name: n8n
+            url: https://n8n.homelab.local
+          - name: Ollama
+            url: https://ollama.homelab.local
+      - name: Media
+        items:
+          - name: Plex
+            url: https://plex.homelab.local
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homer
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homer
+  template:
+    metadata:
+      labels:
+        app: homer
+    spec:
+      containers:
+        - name: homer
+          image: b4bz/homer:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /www/assets/config.yml
+              subPath: config.yml
+      volumes:
+        - name: config
+          configMap:
+            name: homer-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homer
+  namespace: monitoring
+spec:
+  selector:
+    app: homer
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080

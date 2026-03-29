@@ -32,3 +32,47 @@ metadata:
 spec:
   ca:
     secretName: homelab-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ai-tls
+  namespace: ai
+spec:
+  secretName: ai-tls
+  issuerRef:
+    name: homelab-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - ollama.homelab.local
+    - open-webui.homelab.local
+    - n8n.homelab.local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: monitoring-tls
+  namespace: monitoring
+spec:
+  secretName: monitoring-tls
+  issuerRef:
+    name: homelab-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - grafana.homelab.local
+    - prometheus.homelab.local
+    - uptime-kuma.homelab.local
+    - homer.homelab.local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plex-tls
+  namespace: plex
+spec:
+  secretName: plex-tls
+  issuerRef:
+    name: homelab-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - plex.homelab.local
