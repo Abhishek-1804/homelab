@@ -3,23 +3,11 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     extraPortMappings:
-      - containerPort: 30032
-        hostPort: 30032  # plex
       - containerPort: 30080
-        hostPort: 30080  # nginx
-      - containerPort: 30090
-        hostPort: 30090  # prometheus
-      - containerPort: 30300
-        hostPort: 30300  # grafana
-      - containerPort: 30081
-        hostPort: 30081  # open-webui
-      - containerPort: 30082
-        hostPort: 30082  # ollama
-      - containerPort: 30301
-        hostPort: 30301  # uptime-kuma
-      - containerPort: 30083
-        hostPort: 30083  # n8n
-      - containerPort: 30302
-        hostPort: 30302  # homepage
+        hostPort: 80     # ingress HTTP
+      - containerPort: 30443
+        hostPort: 443    # ingress HTTPS
+      - containerPort: 30032
+        hostPort: 30032  # plex (non-HTTP)
   - role: worker
   - role: worker

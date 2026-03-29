@@ -35,8 +35,7 @@ metadata:
 spec:
   selector:
     app: open-webui
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 8080
-      nodePort: 30081

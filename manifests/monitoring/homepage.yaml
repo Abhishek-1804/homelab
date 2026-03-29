@@ -23,6 +23,49 @@ spec:
           image: ghcr.io/gethomepage/homepage:latest
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+      volumes:
+        - name: config
+          configMap:
+            name: homepage-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: monitoring
+data:
+  services.yaml: |
+    - Monitoring:
+        - Grafana:
+            href: https://grafana.homelab.local
+            icon: grafana.png
+        - Prometheus:
+            href: https://prometheus.homelab.local
+            icon: prometheus.png
+        - Uptime Kuma:
+            href: https://uptime-kuma.homelab.local
+            icon: uptime-kuma.png
+    - AI:
+        - Open WebUI:
+            href: https://open-webui.homelab.local
+            icon: ollama.png
+        - Ollama:
+            href: https://ollama.homelab.local
+            icon: ollama.png
+        - n8n:
+            href: https://n8n.homelab.local
+            icon: n8n.png
+    - Media:
+        - Plex:
+            href: https://plex.homelab.local
+            icon: plex.png
+    - Networking:
+        - Nginx:
+            href: https://nginx.homelab.local
+            icon: nginx.png
 ---
 apiVersion: v1
 kind: Service
@@ -32,9 +75,7 @@ metadata:
 spec:
   selector:
     app: homepage
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 3000
-      nodePort: 30302
-      protocol: TCP

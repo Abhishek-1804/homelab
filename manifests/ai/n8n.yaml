@@ -32,8 +32,7 @@ metadata:
 spec:
   selector:
     app: n8n
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 5678
-      nodePort: 30083

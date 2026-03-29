@@ -18,7 +18,7 @@ spec:
       containers:
         - name: pull-model
           image: ollama/ollama:latest
-          command: ["ollama", "pull", "qwen3.5:2b"]
+          command: ["ollama", "pull", "qwen3.5:0.8b"]
           env:
             - name: OLLAMA_HOST
               value: "http://ollama.ai.svc.cluster.local:80"
