@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: monitoring
+data:
+  settings.yaml: |
+    title: Homelab
+    theme: dark
+    color: slate
+    headerStyle: clean
+
+  services.yaml: |
+    - Monitoring:
+        - Grafana:
+            href: https://grafana.homelab.local
+            description: Metrics visualization
+            icon: grafana.png
+        - Prometheus:
+            href: https://prometheus.homelab.local
+            description: Metrics collection
+            icon: prometheus.png
+        - Uptime Kuma:
+            href: https://uptime-kuma.homelab.local
+            description: Uptime monitoring
+            icon: uptime-kuma.png
+    - AI:
+        - Open WebUI:
+            href: https://open-webui.homelab.local
+            description: Chat interface for Ollama
+            icon: openai.png
+        - n8n:
+            href: https://n8n.homelab.local
+            description: Workflow automation
+            icon: n8n.png
+        - Ollama:
+            href: https://ollama.homelab.local
+            description: LLM inference
+            icon: ollama.png
+    - Media:
+        - Plex:
+            href: https://plex.homelab.local
+            description: Media streaming
+            icon: plex.png
+        - Jellyfin:
+            href: https://jellyfin.homelab.local
+            description: Media streaming
+            icon: jellyfin.png
+
+  widgets.yaml: |
+    - search:
+        provider: duckduckgo
+        target: _blank
+
+  bookmarks.yaml: |
+    []
+
+  kubernetes.yaml: |
+    mode: disabled
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "homepage.homelab.local"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: homepage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage
+  namespace: monitoring
+spec:
+  selector:
+    app: homepage
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3000

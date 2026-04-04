@@ -62,17 +62,18 @@ spec:
     - grafana.homelab.local
     - prometheus.homelab.local
     - uptime-kuma.homelab.local
-    - homer.homelab.local
+    - homepage.homelab.local
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: plex-tls
-  namespace: plex
+  name: media-tls
+  namespace: media
 spec:
-  secretName: plex-tls
+  secretName: media-tls
   issuerRef:
     name: homelab-ca-issuer
     kind: ClusterIssuer
   dnsNames:
     - plex.homelab.local
+    - jellyfin.homelab.local

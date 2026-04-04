@@ -9,5 +9,7 @@ nodes:
         hostPort: 443    # ingress HTTPS
       - containerPort: 30032
         hostPort: 30032  # plex (non-HTTP)
+      - containerPort: 30033
+        hostPort: 30033  # jellyfin (non-HTTP)
   - role: worker
   - role: worker

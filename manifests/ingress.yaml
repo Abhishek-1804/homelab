@@ -11,7 +11,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: plex
+  name: media
 ---
 # AI services
 apiVersion: networking.k8s.io/v1
@@ -76,7 +76,7 @@ spec:
         - grafana.homelab.local
         - prometheus.homelab.local
         - uptime-kuma.homelab.local
-        - homer.homelab.local
+        - homepage.homelab.local
       secretName: monitoring-tls
   rules:
     - host: grafana.homelab.local
@@ -109,23 +109,23 @@ spec:
                 name: uptime-kuma
                 port:
                   number: 80
-    - host: homer.homelab.local
+    - host: homepage.homelab.local
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: homer
+                name: homepage
                 port:
                   number: 80
 ---
-# Plex
+# Media
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: plex-ingress
-  namespace: plex
+  name: media-ingress
+  namespace: media
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
@@ -133,7 +133,8 @@ spec:
   tls:
     - hosts:
         - plex.homelab.local
-      secretName: plex-tls
+        - jellyfin.homelab.local
+      secretName: media-tls
   rules:
     - host: plex.homelab.local
       http:
@@ -143,5 +144,15 @@ spec:
             backend:
               service:
                 name: plex
+                port:
+                  number: 80
+    - host: jellyfin.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jellyfin
                 port:
                   number: 80
