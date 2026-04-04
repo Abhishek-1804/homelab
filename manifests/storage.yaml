@@ -1,3 +1,15 @@
+# Storage provisioner for kind (Kubernetes in Docker).
+#
+# local-path-provisioner is the correct choice here — Longhorn requires open-iscsi
+# on each node, which kind nodes (Docker containers) don't have.
+#
+# When moving to real nodes (bare metal / VMs / Proxmox):
+#   1. Install Longhorn: helm install longhorn longhorn/longhorn -n longhorn-system --create-namespace
+#   2. Delete this file
+#   3. Replace storageClassName: local-path → storageClassName: longhorn in every PVC
+#   That's the only change needed across the entire repo.
+#
+# Do not modify this file unless the provisioner is broken.
 apiVersion: v1
 kind: Namespace
 metadata:

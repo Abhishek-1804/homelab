@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: libreoffice-config
+  namespace: it
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: libreoffice
+  namespace: it
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: libreoffice
+  template:
+    metadata:
+      labels:
+        app: libreoffice
+    spec:
+      containers:
+        - name: libreoffice
+          image: lscr.io/linuxserver/libreoffice:latest
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: libreoffice-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: libreoffice
+  namespace: it
+spec:
+  selector:
+    app: libreoffice
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3000

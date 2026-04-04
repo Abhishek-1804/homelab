@@ -63,6 +63,7 @@ spec:
     - prometheus.homelab.local
     - uptime-kuma.homelab.local
     - homepage.homelab.local
+    - home-assistant.homelab.local
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -77,3 +78,17 @@ spec:
   dnsNames:
     - plex.homelab.local
     - jellyfin.homelab.local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: it-tls
+  namespace: it
+spec:
+  secretName: it-tls
+  issuerRef:
+    name: homelab-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - it-tools.homelab.local
+    - libreoffice.homelab.local

@@ -16,6 +16,10 @@ data:
             href: https://grafana.homelab.local
             description: Metrics visualization
             icon: grafana.png
+        - Home Assistant:
+            href: https://home-assistant.homelab.local
+            description: Home automation
+            icon: home-assistant.png
         - Prometheus:
             href: https://prometheus.homelab.local
             description: Metrics collection
@@ -37,6 +41,15 @@ data:
             href: https://ollama.homelab.local
             description: LLM inference
             icon: ollama.png
+    - IT Tools:
+        - IT Tools:
+            href: https://it-tools.homelab.local
+            description: Developer utilities
+            icon: it-tools.png
+        - LibreOffice:
+            href: https://libreoffice.homelab.local
+            description: Office suite
+            icon: libreoffice.png
     - Media:
         - Plex:
             href: https://plex.homelab.local

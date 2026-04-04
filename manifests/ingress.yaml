@@ -13,6 +13,11 @@ kind: Namespace
 metadata:
   name: media
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: it
+---
 # AI services
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -77,6 +82,7 @@ spec:
         - prometheus.homelab.local
         - uptime-kuma.homelab.local
         - homepage.homelab.local
+        - home-assistant.homelab.local
       secretName: monitoring-tls
   rules:
     - host: grafana.homelab.local
@@ -119,6 +125,16 @@ spec:
                 name: homepage
                 port:
                   number: 80
+    - host: home-assistant.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: home-assistant
+                port:
+                  number: 80
 ---
 # Media
 apiVersion: networking.k8s.io/v1
@@ -154,5 +170,42 @@ spec:
             backend:
               service:
                 name: jellyfin
+                port:
+                  number: 80
+---
+# IT tools
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: it-ingress
+  namespace: it
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - it-tools.homelab.local
+        - libreoffice.homelab.local
+      secretName: it-tls
+  rules:
+    - host: it-tools.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: it-tools
+                port:
+                  number: 80
+    - host: libreoffice.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: libreoffice
                 port:
                   number: 80
