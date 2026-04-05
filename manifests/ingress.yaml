@@ -150,6 +150,7 @@ spec:
     - hosts:
         - plex.homelab.local
         - jellyfin.homelab.local
+        - nextcloud.homelab.local
       secretName: media-tls
   rules:
     - host: plex.homelab.local
@@ -170,6 +171,16 @@ spec:
             backend:
               service:
                 name: jellyfin
+                port:
+                  number: 80
+    - host: nextcloud.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud
                 port:
                   number: 80
 ---

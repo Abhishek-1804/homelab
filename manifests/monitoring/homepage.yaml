@@ -51,6 +51,10 @@ data:
             description: Office suite
             icon: libreoffice.png
     - Media:
+        - Nextcloud:
+            href: https://nextcloud.homelab.local
+            description: File storage and sharing
+            icon: nextcloud.png
         - Plex:
             href: https://plex.homelab.local
             description: Media streaming

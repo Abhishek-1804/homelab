@@ -78,6 +78,7 @@ spec:
   dnsNames:
     - plex.homelab.local
     - jellyfin.homelab.local
+    - nextcloud.homelab.local
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
