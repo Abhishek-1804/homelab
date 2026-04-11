@@ -6,7 +6,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: local-path
+  storageClassName: ""
+  volumeName: home-assistant-pv
   resources:
     requests:
       storage: 8Gi
@@ -36,7 +37,7 @@ spec:
               if ! grep -q "use_x_forwarded_for" /config/configuration.yaml 2>/dev/null; then
                 cat >> /config/configuration.yaml << 'EOF'
 
-              # 0.0.0.0/0 trusts all proxies — safe for a local kind cluster with no
+              # 0.0.0.0/0 trusts all proxies — safe for a local cluster with no
               # external access. On a real k8s installation, replace with the actual
               # ingress-nginx pod CIDR (e.g. 10.244.0.0/16) to avoid spoofing risks.
               http:
