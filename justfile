@@ -3,7 +3,7 @@ cluster := "homelab"
 # install all required dependencies
 [macos]
 install-deps:
-    brew install minikube kubectl helm helmfile yq vfkit
+    brew install minikube kubectl helm helmfile yq
     helm plugin install https://github.com/databus23/helm-diff || true
 
 # check required dependencies
@@ -16,13 +16,15 @@ check-deps:
     @command -v yq        >/dev/null || (echo "missing: yq        → brew install yq"        && exit 1)
     @echo "all dependencies satisfied"
 
-# configure macOS to resolve *.homelab.local via minikube's ingress-dns addon
-# vfkit gives the VM a real routable IP so this works without any /etc/hosts hacks
+# sync /etc/hosts with hostnames defined in ingress.yaml
 [macos]
-setup-dns:
-    @sudo mkdir -p /etc/resolver
-    @minikube ip --profile {{cluster}} | xargs -I{} sudo sh -c 'echo "nameserver {}" > /etc/resolver/homelab.local'
-    @echo "DNS configured — *.homelab.local resolves via $$(minikube ip --profile {{cluster}})"
+update-hosts:
+    @echo "updating /etc/hosts..."
+    @sudo sed -i '' '/\.homelab\.local/d' /etc/hosts
+    @yq eval 'select(.kind == "Ingress") | .spec.rules[].host' manifests/ingress.yaml \
+        | xargs -I{} sudo sh -c 'echo "127.0.0.1 {}" >> /etc/hosts'
+    @echo "done — current homelab entries:"
+    @grep homelab /etc/hosts
 
 # trust the homelab CA certificate — re-run after rebuild
 [macos]
@@ -52,11 +54,11 @@ deploy: check-deps
             --profile {{cluster}} \
             --mount \
             --mount-string="$(pwd)/data:/homelab-data" \
+            --ports=127.0.0.1:80:80,127.0.0.1:443:443 \
             --addons=ingress \
-            --addons=ingress-dns \
-            --driver=vfkit
+            --driver=docker
     just sync
-    just setup-dns
+    just update-hosts
     just trust-ca
 
 # destroy minikube cluster
