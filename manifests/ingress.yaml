@@ -151,6 +151,7 @@ spec:
         - plex.homelab.local
         - jellyfin.homelab.local
         - nextcloud.homelab.local
+        - immich.homelab.local
       secretName: media-tls
   rules:
     - host: plex.homelab.local
@@ -181,6 +182,16 @@ spec:
             backend:
               service:
                 name: nextcloud
+                port:
+                  number: 80
+    - host: immich.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: immich-server
                 port:
                   number: 80
 ---

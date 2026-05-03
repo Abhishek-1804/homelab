@@ -12,11 +12,16 @@ The goal isn't production readiness — it's to have a real cluster running real
 | Grafana | https://grafana.homelab.local | Metrics visualization |
 | Prometheus | https://prometheus.homelab.local | Metrics collection |
 | Uptime Kuma | https://uptime-kuma.homelab.local | Uptime monitoring |
+| Home Assistant | https://home-assistant.homelab.local | Home automation |
 | Open WebUI | https://open-webui.homelab.local | Chat interface for Ollama |
 | Ollama | https://ollama.homelab.local | Local LLM inference |
 | n8n | https://n8n.homelab.local | Workflow automation |
 | Plex | https://plex.homelab.local | Media streaming |
 | Jellyfin | https://jellyfin.homelab.local | Media streaming |
+| Nextcloud | https://nextcloud.homelab.local | File storage |
+| Immich | https://immich.homelab.local | Photo and video management |
+| IT Tools | https://it-tools.homelab.local | Developer utilities |
+| LibreOffice | https://libreoffice.homelab.local | Online office suite |
 
 ## What this teaches
 
@@ -26,11 +31,11 @@ The goal isn't production readiness — it's to have a real cluster running real
 
 **TLS** — cert-manager runs a self-signed CA inside the cluster and automatically issues and renews certificates for every service. The CA is trusted on the host machine via the macOS keychain, so all `.homelab.local` domains get valid HTTPS with no manual cert work.
 
-**Storage provisioning** — local-path-provisioner watches for PersistentVolumeClaims and automatically creates directories on the node to back them. This makes the PVC → PV → StorageClass flow concrete: you declare what you need, the provisioner fulfills it, and data survives pod restarts.
+**Storage** — static PersistentVolumes back each service with a fixed hostPath (`/homelab-data/<service>`), which kind bind-mounts from `./data/` on your Mac. Data survives cluster destruction and recreation because it lives on the host filesystem. The PV → PVC binding flow is explicit: you can see exactly which directory backs which service.
 
 **Declarative configuration** — nothing is set up manually inside the cluster. Every resource is a YAML manifest in this repo. Deleting and recreating the entire cluster with `just rebuild` produces the same result every time.
 
-**Namespaces and RBAC** — services are grouped into `ai`, `monitoring`, and `media` namespaces. A ServiceAccount with scoped permissions shows how Kubernetes controls what a pod is allowed to do against the API.
+**Namespaces and RBAC** — services are grouped into `ai`, `monitoring`, `media`, and `it` namespaces. A ServiceAccount with scoped permissions shows how Kubernetes controls what a pod is allowed to do against the API.
 
 ## Prerequisites
 
@@ -52,7 +57,7 @@ just deploy
 ```
 
 This will:
-1. Create the kind cluster (3 nodes: 1 control-plane, 2 workers)
+1. Create the kind cluster (single node)
 2. Install ingress-nginx and cert-manager via Helm
 3. Apply all manifests
 4. Add all `.homelab.local` hostnames to `/etc/hosts`
@@ -73,7 +78,7 @@ just destroy       # delete the cluster
 kubectl get pods -A                        # see everything running
 kubectl get ingress -A                     # see all ingress rules
 kubectl get pvc -A                         # see all persistent volume claims
-kubectl describe pvc <name> -n <ns>        # see provisioning events
+kubectl describe pvc <name> -n <ns>        # see PV binding details
 kubectl logs -n ingress-nginx <pod>        # ingress controller logs
 ```
 
@@ -81,16 +86,17 @@ kubectl logs -n ingress-nginx <pod>        # ingress controller logs
 
 ```
 homelab/
-├── kind-cluster.yaml        # cluster topology (nodes, port mappings)
+├── kind-config.yaml         # cluster topology (node, port mappings, data mount)
 ├── helmfile.yaml            # ingress-nginx and cert-manager helm releases
 ├── justfile                 # all automation recipes
 ├── data/                    # persistent volume data (gitignored)
 └── manifests/
     ├── ingress.yaml         # namespaces + all ingress rules
-    ├── storage.yaml         # local-path-provisioner + StorageClass
+    ├── volumes.yaml         # static PersistentVolumes backed by ./data/
     ├── certs/
     │   └── issuer.yaml      # CA + per-namespace TLS certificates
     ├── ai/                  # ollama, open-webui, n8n
-    ├── monitoring/          # prometheus, grafana, uptime-kuma, homepage
-    └── media/               # plex, jellyfin
+    ├── monitoring/          # prometheus, grafana, uptime-kuma, homepage, home-assistant
+    ├── media/               # plex, jellyfin, nextcloud, immich
+    └── it/                  # it-tools, libreoffice
 ```

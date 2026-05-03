@@ -79,6 +79,7 @@ spec:
     - plex.homelab.local
     - jellyfin.homelab.local
     - nextcloud.homelab.local
+    - immich.homelab.local
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

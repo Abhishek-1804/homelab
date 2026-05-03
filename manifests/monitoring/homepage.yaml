@@ -63,6 +63,10 @@ data:
             href: https://jellyfin.homelab.local
             description: Media streaming
             icon: jellyfin.png
+        - Immich:
+            href: https://immich.homelab.local
+            description: Photo and video management
+            icon: immich.png
 
   widgets.yaml: |
     - search:

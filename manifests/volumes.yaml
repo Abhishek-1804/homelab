@@ -1,10 +1,10 @@
 # Static PersistentVolumes with fixed hostPaths.
-# Each PV maps to a named subdirectory under ./data/ on the host Mac via minikube's --mount.
+# Each PV maps to a named subdirectory under ./data/ on the host Mac via kind's extraMounts.
 # Using static PVs means the same directory is reused on every rebuild — data survives
 # cluster destruction and recreation.
 #
-# Path inside minikube VM: /homelab-data/<service>
-# Path on your Mac:        ./data/<service>
+# Path inside kind node: /homelab-data/<service>
+# Path on your Mac:      ./data/<service>
 #
 # To wipe all data:             rm -rf ./data/*
 # To wipe a single service:     rm -rf ./data/<service>
@@ -150,3 +150,42 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   hostPath:
     path: /homelab-data/libreoffice
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-upload-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /homelab-data/immich/upload
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-postgres-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /homelab-data/immich/postgres
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-ml-pv
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /homelab-data/immich/ml
