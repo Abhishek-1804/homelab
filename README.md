@@ -63,6 +63,50 @@ This will:
 4. Add all `.homelab.local` hostnames to `/etc/hosts`
 5. Trust the homelab CA certificate in the macOS keychain
 
+## Accessing from another machine on your Tailscale network
+
+The ingress controller is already exposed on ports 80 and 443 of the host, so any machine on your Tailscale network can reach it. You just need to point the `.homelab.local` hostnames at the host's Tailscale IP and trust the homelab CA cert.
+
+**Step 1 — Get the Tailscale IP of the homelab host**
+
+Run on the homelab host:
+
+```bash
+tailscale ip -4
+```
+
+**Step 2 — Add `/etc/hosts` entries on the remote machine**
+
+On macOS, run (replace `<tailscale-ip>`):
+
+```bash
+sudo sed -i '' '/\.homelab\.local/d' /etc/hosts && \
+sudo sh -c 'echo "<tailscale-ip> homepage.homelab.local grafana.homelab.local prometheus.homelab.local uptime-kuma.homelab.local home-assistant.homelab.local open-webui.homelab.local n8n.homelab.local ollama.homelab.local it-tools.homelab.local libreoffice.homelab.local nextcloud.homelab.local plex.homelab.local jellyfin.homelab.local immich.homelab.local" >> /etc/hosts'
+```
+
+**Step 3 — Trust the homelab CA cert on the remote machine**
+
+On macOS, run (replace `<user>` and `<tailscale-ip>`):
+
+```bash
+ssh <user>@<tailscale-ip> \
+  "kubectl get secret homelab-ca-secret -n cert-manager \
+   -o jsonpath='{.data.tls\.crt}' | base64 -d" > /tmp/homelab-ca.crt
+
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain /tmp/homelab-ca.crt
+```
+
+Restart your browser after trusting the cert.
+
+**Step 4 — Open the dashboard**
+
+```
+https://homepage.homelab.local
+```
+
+> If you rebuild the cluster (`just rebuild`), repeat step 3 — a new CA cert is generated each time.
+
 ## Useful commands
 
 ```bash
