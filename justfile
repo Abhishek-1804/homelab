@@ -36,32 +36,10 @@ sync:
 
 # create cluster and deploy (skips cluster creation if already exists)
 deploy: check-deps
-    #!/usr/bin/env bash
-    set -euo pipefail
     mkdir -p data
-    if ! kind get clusters | grep -q '^{{cluster}}$'; then
-        DATA_DIR="$(pwd)/data"
-        TMPCONFIG=$(mktemp --suffix=.yaml)
-        trap "rm -f $TMPCONFIG" EXIT
-
-        # Inject extraMounts
-        DATA_DIR="$DATA_DIR" yq e \
-            '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' \
-            kind-config.yaml > "$TMPCONFIG"
-
-        # Auto-generate extraPortMappings from all NodePort services in manifests/
-        PORTS=$(find manifests -name "*.yaml" \
-            | xargs yq ea 'select(.kind == "Service") | .spec.ports[] | select(.nodePort != null) | .nodePort' 2>/dev/null \
-            | sort -u \
-            | awk '{print "{\"containerPort\":" $1 ",\"hostPort\":" $1 "}"}' \
-            | paste -sd ',')
-
-        if [ -n "$PORTS" ]; then
-            yq e ".nodes[0].extraPortMappings = [$PORTS]" -i "$TMPCONFIG"
-        fi
-
-        kind create cluster --name {{cluster}} --config "$TMPCONFIG"
-    fi
+    kind get clusters | grep -q '^{{cluster}}$' || \
+        DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
+        | kind create cluster --name {{cluster}} --config -
     just sync
 
 # destroy kind cluster

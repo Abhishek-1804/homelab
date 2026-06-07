@@ -1,15 +1,42 @@
 # Single-node kind cluster.
 #
-# Single node keeps hostPath PVs simple: pods always land on the only node,
-# so /homelab-data is always reachable.
+# extraMounts is injected at deploy time by `just deploy` using yq since
+# kind requires an absolute hostPath — resolved from $(pwd)/data at runtime.
 #
-# extraMounts and extraPortMappings are injected at deploy time by `just deploy`
-# using yq. extraPortMappings are auto-generated from NodePort values in manifests/
-# so kind-config.yaml never needs to be edited when adding new services.
-#
-# Path inside kind node: /homelab-data/<service>
-# Path on host:          ./data/<service>
+# extraPortMappings expose each NodePort service on the host so they are
+# reachable from other Tailscale devices without any /etc/hosts or TLS setup.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
+    extraPortMappings:
+      - containerPort: 30000
+        hostPort: 30000  # homepage
+      - containerPort: 30001
+        hostPort: 30001  # grafana
+      - containerPort: 30002
+        hostPort: 30002  # prometheus
+      - containerPort: 30003
+        hostPort: 30003  # uptime-kuma
+      - containerPort: 30004
+        hostPort: 30004  # home-assistant
+      - containerPort: 30005
+        hostPort: 30005  # open-webui
+      - containerPort: 30006
+        hostPort: 30006  # ollama
+      - containerPort: 30007
+        hostPort: 30007  # n8n
+      - containerPort: 30008
+        hostPort: 30008  # hermes-agent
+      - containerPort: 30009
+        hostPort: 30009  # plex
+      - containerPort: 30010
+        hostPort: 30010  # jellyfin
+      - containerPort: 30011
+        hostPort: 30011  # nextcloud
+      - containerPort: 30012
+        hostPort: 30012  # immich
+      - containerPort: 30013
+        hostPort: 30013  # it-tools
+      - containerPort: 30014
+        hostPort: 30014  # libreoffice
