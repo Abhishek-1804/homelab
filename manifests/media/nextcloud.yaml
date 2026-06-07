@@ -38,11 +38,9 @@ spec:
             - name: NEXTCLOUD_ADMIN_PASSWORD
               value: "changeme"
             - name: NEXTCLOUD_TRUSTED_DOMAINS
-              value: "100.122.254.107"
+              value: "*"
             - name: OVERWRITEPROTOCOL
               value: "http"
-            - name: OVERWRITEHOST
-              value: "100.122.254.107:3011"
             - name: TRUSTED_PROXIES
               value: "0.0.0.0/0"
           volumeMounts:
