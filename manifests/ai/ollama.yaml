@@ -64,7 +64,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ollama-pull-gemma4-31b-cloud
+  name: ollama-pull-gemma3-4b
   namespace: ai
 spec:
   template:
@@ -83,4 +83,4 @@ spec:
               until ollama list 2>/dev/null; do
                 echo "waiting for ollama..."; sleep 3
               done
-              ollama pull gemma4:31b-cloud
+              ollama pull gemma3:4b

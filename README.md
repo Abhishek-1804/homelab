@@ -10,21 +10,21 @@ All services are accessible via NodePort at the host's Tailscale IP (`100.122.25
 
 | Service | Port | Purpose |
 |---|---|---|
-| Homepage | [30000](http://100.122.254.107:3000) | Central dashboard |
-| Grafana | 30001 | Metrics visualization |
-| Prometheus | 30002 | Metrics collection |
-| Uptime Kuma | 30003 | Uptime monitoring |
-| Home Assistant | 30004 | Home automation |
-| Open WebUI | 30005 | Chat interface for Ollama |
-| Ollama | 30006 | Local LLM inference |
-| n8n | 30007 | Workflow automation |
-| Hermes Agent | 30008 | Autonomous AI agent |
-| Plex | 30009 | Media streaming |
-| Jellyfin | 30010 | Media streaming |
-| Nextcloud | 30011 | File storage |
-| Immich | 30012 | Photo and video management |
-| IT Tools | 30013 | Developer utilities |
-| LibreOffice | 30014 | Online office suite |
+| Homepage | [3000](http://100.122.254.107:3000) | Central dashboard |
+| Grafana | 3001 | Metrics visualization |
+| Prometheus | 3002 | Metrics collection |
+| Uptime Kuma | 3003 | Uptime monitoring |
+| Home Assistant | 3004 | Home automation |
+| Open WebUI | 3005 | Chat interface for Ollama |
+| Ollama | 3006 | Local LLM inference |
+| n8n | 3007 | Workflow automation |
+| Hermes Agent | 3008 | Autonomous AI agent |
+| Plex | 3009 | Media streaming |
+| Jellyfin | 3010 | Media streaming |
+| Nextcloud | 3011 | File storage |
+| Immich | 3012 | Photo and video management |
+| IT Tools | 3013 | Developer utilities |
+| LibreOffice | 3014 | Online office suite |
 
 ## What this teaches
 
@@ -87,7 +87,7 @@ kubectl exec -it -n <namespace> <pod> -- bash  # shell into a pod
 
 ```
 homelab/
-├── kind-config.yaml         # cluster topology (node, data mount — ports auto-generated)
+├── kind-config.yaml         # cluster topology (node, ports, data mount)
 ├── helmfile.yaml            # helm releases (currently unused)
 ├── justfile                 # all automation recipes
 ├── data/                    # persistent volume data (gitignored)
