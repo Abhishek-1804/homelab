@@ -80,7 +80,7 @@ spec:
             - sh
             - -c
             - |
-              until curl -sf http://ollama.ai.svc.cluster.local/api/tags; do
+              until ollama list 2>/dev/null; do
                 echo "waiting for ollama..."; sleep 3
               done
               ollama pull gemma4:31b-cloud
