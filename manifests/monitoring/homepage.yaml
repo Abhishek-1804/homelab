@@ -13,62 +13,62 @@ data:
   services.yaml: |
     - Monitoring:
         - Grafana:
-            href: http://100.122.254.107:30001
+            href: http://100.122.254.107:3001
             description: Metrics visualization
             icon: grafana.png
         - Home Assistant:
-            href: http://100.122.254.107:30004
+            href: http://100.122.254.107:3004
             description: Home automation
             icon: home-assistant.png
         - Prometheus:
-            href: http://100.122.254.107:30002
+            href: http://100.122.254.107:3002
             description: Metrics collection
             icon: prometheus.png
         - Uptime Kuma:
-            href: http://100.122.254.107:30003
+            href: http://100.122.254.107:3003
             description: Uptime monitoring
             icon: uptime-kuma.png
     - AI:
         - Open WebUI:
-            href: http://100.122.254.107:30005
+            href: http://100.122.254.107:3005
             description: Chat interface for Ollama
             icon: openai.png
         - n8n:
-            href: http://100.122.254.107:30007
+            href: http://100.122.254.107:3007
             description: Workflow automation
             icon: n8n.png
         - Ollama:
-            href: http://100.122.254.107:30006
+            href: http://100.122.254.107:3006
             description: LLM inference
             icon: ollama.png
         - Hermes Agent:
-            href: http://100.122.254.107:30008
+            href: http://100.122.254.107:3008
             description: Autonomous AI agent
             icon: https://avatars.githubusercontent.com/u/103061224
     - IT Tools:
         - IT Tools:
-            href: http://100.122.254.107:30013
+            href: http://100.122.254.107:3013
             description: Developer utilities
             icon: it-tools.png
         - LibreOffice:
-            href: http://100.122.254.107:30014
+            href: http://100.122.254.107:3014
             description: Office suite
             icon: libreoffice.png
     - Media:
         - Nextcloud:
-            href: http://100.122.254.107:30011
+            href: http://100.122.254.107:3011
             description: File storage and sharing
             icon: nextcloud.png
         - Plex:
-            href: http://100.122.254.107:30009
+            href: http://100.122.254.107:3009
             description: Media streaming
             icon: plex.png
         - Jellyfin:
-            href: http://100.122.254.107:30010
+            href: http://100.122.254.107:3010
             description: Media streaming
             icon: jellyfin.png
         - Immich:
-            href: http://100.122.254.107:30012
+            href: http://100.122.254.107:3012
             description: Photo and video management
             icon: immich.png
 

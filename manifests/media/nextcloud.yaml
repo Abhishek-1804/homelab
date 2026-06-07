@@ -42,7 +42,7 @@ spec:
             - name: OVERWRITEPROTOCOL
               value: "http"
             - name: OVERWRITEHOST
-              value: "100.122.254.107:30011"
+              value: "100.122.254.107:3011"
             - name: TRUSTED_PROXIES
               value: "0.0.0.0/0"
           volumeMounts:

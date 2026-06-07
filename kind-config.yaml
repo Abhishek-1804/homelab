@@ -11,32 +11,32 @@ nodes:
   - role: control-plane
     extraPortMappings:
       - containerPort: 30000
-        hostPort: 30000  # homepage
+        hostPort: 3000  # homepage
       - containerPort: 30001
-        hostPort: 30001  # grafana
+        hostPort: 3001  # grafana
       - containerPort: 30002
-        hostPort: 30002  # prometheus
+        hostPort: 3002  # prometheus
       - containerPort: 30003
-        hostPort: 30003  # uptime-kuma
+        hostPort: 3003  # uptime-kuma
       - containerPort: 30004
-        hostPort: 30004  # home-assistant
+        hostPort: 3004  # home-assistant
       - containerPort: 30005
-        hostPort: 30005  # open-webui
+        hostPort: 3005  # open-webui
       - containerPort: 30006
-        hostPort: 30006  # ollama
+        hostPort: 3006  # ollama
       - containerPort: 30007
-        hostPort: 30007  # n8n
+        hostPort: 3007  # n8n
       - containerPort: 30008
-        hostPort: 30008  # hermes-agent
+        hostPort: 3008  # hermes-agent
       - containerPort: 30009
-        hostPort: 30009  # plex
+        hostPort: 3009  # plex
       - containerPort: 30010
-        hostPort: 30010  # jellyfin
+        hostPort: 3010  # jellyfin
       - containerPort: 30011
-        hostPort: 30011  # nextcloud
+        hostPort: 3011  # nextcloud
       - containerPort: 30012
-        hostPort: 30012  # immich
+        hostPort: 3012  # immich
       - containerPort: 30013
-        hostPort: 30013  # it-tools
+        hostPort: 3013  # it-tools
       - containerPort: 30014
-        hostPort: 30014  # libreoffice
+        hostPort: 3014  # libreoffice

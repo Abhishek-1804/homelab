@@ -10,7 +10,7 @@ All services are accessible via NodePort at the host's Tailscale IP (`100.122.25
 
 | Service | Port | Purpose |
 |---|---|---|
-| Homepage | [30000](http://100.122.254.107:30000) | Central dashboard |
+| Homepage | [30000](http://100.122.254.107:3000) | Central dashboard |
 | Grafana | 30001 | Metrics visualization |
 | Prometheus | 30002 | Metrics collection |
 | Uptime Kuma | 30003 | Uptime monitoring |
@@ -61,7 +61,7 @@ This will:
 2. Auto-map all NodePort services to host ports
 3. Apply all manifests
 
-Then open **http://100.122.254.107:30000** from any device on your Tailscale network.
+Then open **http://100.122.254.107:3000** from any device on your Tailscale network.
 
 > If you change the Tailscale IP, update `100.122.254.107` in `justfile` and `manifests/monitoring/homepage.yaml`.
 
