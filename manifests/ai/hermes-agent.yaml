@@ -35,7 +35,7 @@ spec:
             - -c
             - |
               hermes gateway start &
-              hermes dashboard --host 0.0.0.0 --port 9119
+              hermes dashboard --host 0.0.0.0 --port 9119 --insecure
           stdin: true
           tty: true
           ports:
