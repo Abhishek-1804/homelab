@@ -58,7 +58,7 @@ metadata:
 spec:
   selector:
     app: hermes-agent
-  type: ClusterIP
+  type: NodePort
   ports:
     - name: gateway
       port: 8642
@@ -66,6 +66,7 @@ spec:
     - name: dashboard
       port: 9119
       targetPort: 9119
+      nodePort: 30008
     - name: workspace
       port: 3000
       targetPort: 3000

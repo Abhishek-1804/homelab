@@ -70,7 +70,8 @@ metadata:
 spec:
   selector:
     app: home-assistant
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 8123
+      nodePort: 30004

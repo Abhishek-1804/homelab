@@ -55,10 +55,11 @@ metadata:
 spec:
   selector:
     app: ollama
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 11434
+      nodePort: 30006
 ---
 apiVersion: batch/v1
 kind: Job

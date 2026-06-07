@@ -13,62 +13,62 @@ data:
   services.yaml: |
     - Monitoring:
         - Grafana:
-            href: https://grafana.homelab.local
+            href: http://100.122.254.107:30001
             description: Metrics visualization
             icon: grafana.png
         - Home Assistant:
-            href: https://home-assistant.homelab.local
+            href: http://100.122.254.107:30004
             description: Home automation
             icon: home-assistant.png
         - Prometheus:
-            href: https://prometheus.homelab.local
+            href: http://100.122.254.107:30002
             description: Metrics collection
             icon: prometheus.png
         - Uptime Kuma:
-            href: https://uptime-kuma.homelab.local
+            href: http://100.122.254.107:30003
             description: Uptime monitoring
             icon: uptime-kuma.png
     - AI:
         - Open WebUI:
-            href: https://open-webui.homelab.local
+            href: http://100.122.254.107:30005
             description: Chat interface for Ollama
             icon: openai.png
         - n8n:
-            href: https://n8n.homelab.local
+            href: http://100.122.254.107:30007
             description: Workflow automation
             icon: n8n.png
         - Ollama:
-            href: https://ollama.homelab.local
+            href: http://100.122.254.107:30006
             description: LLM inference
             icon: ollama.png
         - Hermes Agent:
-            href: https://hermes.homelab.local
+            href: http://100.122.254.107:30008
             description: Autonomous AI agent
             icon: https://avatars.githubusercontent.com/u/103061224
     - IT Tools:
         - IT Tools:
-            href: https://it-tools.homelab.local
+            href: http://100.122.254.107:30013
             description: Developer utilities
             icon: it-tools.png
         - LibreOffice:
-            href: https://libreoffice.homelab.local
+            href: http://100.122.254.107:30014
             description: Office suite
             icon: libreoffice.png
     - Media:
         - Nextcloud:
-            href: https://nextcloud.homelab.local
+            href: http://100.122.254.107:30011
             description: File storage and sharing
             icon: nextcloud.png
         - Plex:
-            href: https://plex.homelab.local
+            href: http://100.122.254.107:30009
             description: Media streaming
             icon: plex.png
         - Jellyfin:
-            href: https://jellyfin.homelab.local
+            href: http://100.122.254.107:30010
             description: Media streaming
             icon: jellyfin.png
         - Immich:
-            href: https://immich.homelab.local
+            href: http://100.122.254.107:30012
             description: Photo and video management
             icon: immich.png
 
@@ -135,7 +135,8 @@ metadata:
 spec:
   selector:
     app: homepage
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
+      nodePort: 30000

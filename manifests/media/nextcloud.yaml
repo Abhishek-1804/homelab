@@ -38,11 +38,11 @@ spec:
             - name: NEXTCLOUD_ADMIN_PASSWORD
               value: "changeme"
             - name: NEXTCLOUD_TRUSTED_DOMAINS
-              value: "nextcloud.homelab.local"
+              value: "100.122.254.107"
             - name: OVERWRITEPROTOCOL
-              value: "https"
+              value: "http"
             - name: OVERWRITEHOST
-              value: "nextcloud.homelab.local"
+              value: "100.122.254.107:30011"
             - name: TRUSTED_PROXIES
               value: "0.0.0.0/0"
           volumeMounts:
@@ -61,7 +61,8 @@ metadata:
 spec:
   selector:
     app: nextcloud
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 80
+      nodePort: 30011

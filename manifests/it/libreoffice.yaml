@@ -48,7 +48,8 @@ metadata:
 spec:
   selector:
     app: libreoffice
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
+      nodePort: 30014

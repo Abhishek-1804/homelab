@@ -181,10 +181,11 @@ metadata:
 spec:
   selector:
     app: immich-server
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 2283
+      nodePort: 30012
 ---
 # Machine learning (face/smart search)
 apiVersion: apps/v1
