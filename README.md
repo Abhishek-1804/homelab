@@ -16,6 +16,7 @@ The goal isn't production readiness — it's to have a real cluster running real
 | Open WebUI | https://open-webui.homelab.local | Chat interface for Ollama |
 | Ollama | https://ollama.homelab.local | Local LLM inference |
 | n8n | https://n8n.homelab.local | Workflow automation |
+| Hermes Agent | https://hermes.homelab.local | Autonomous AI agent |
 | Plex | https://plex.homelab.local | Media streaming |
 | Jellyfin | https://jellyfin.homelab.local | Media streaming |
 | Nextcloud | https://nextcloud.homelab.local | File storage |
@@ -81,7 +82,7 @@ On macOS, run (replace `<tailscale-ip>`):
 
 ```bash
 sudo sed -i '' '/\.homelab\.local/d' /etc/hosts && \
-sudo sh -c 'echo "<tailscale-ip> homepage.homelab.local grafana.homelab.local prometheus.homelab.local uptime-kuma.homelab.local home-assistant.homelab.local open-webui.homelab.local n8n.homelab.local ollama.homelab.local it-tools.homelab.local libreoffice.homelab.local nextcloud.homelab.local plex.homelab.local jellyfin.homelab.local immich.homelab.local" >> /etc/hosts'
+sudo sh -c 'echo "<tailscale-ip> homepage.homelab.local grafana.homelab.local prometheus.homelab.local uptime-kuma.homelab.local home-assistant.homelab.local open-webui.homelab.local n8n.homelab.local ollama.homelab.local hermes.homelab.local it-tools.homelab.local libreoffice.homelab.local nextcloud.homelab.local plex.homelab.local jellyfin.homelab.local immich.homelab.local" >> /etc/hosts'
 ```
 
 **Step 3 — Trust the homelab CA cert on the remote machine**

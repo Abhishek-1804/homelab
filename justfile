@@ -89,6 +89,7 @@ trust-ca:
 sync:
     helmfile apply
     kubectl wait -n ingress-nginx --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=120s
+    until kubectl get endpoints -n ingress-nginx ingress-nginx-controller-admission -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null | grep -q .; do sleep 2; done
     kubectl apply -f manifests/ingress.yaml
     kubectl apply -f manifests/ -R
 

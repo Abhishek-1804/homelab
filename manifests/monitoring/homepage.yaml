@@ -41,6 +41,10 @@ data:
             href: https://ollama.homelab.local
             description: LLM inference
             icon: ollama.png
+        - Hermes Agent:
+            href: https://hermes.homelab.local
+            description: Autonomous AI agent
+            icon: https://avatars.githubusercontent.com/u/103061224
     - IT Tools:
         - IT Tools:
             href: https://it-tools.homelab.local

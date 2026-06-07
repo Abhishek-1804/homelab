@@ -59,3 +59,27 @@ spec:
   ports:
     - port: 80
       targetPort: 11434
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-pull-gemma4-31b-cloud
+  namespace: ai
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pull
+          image: ollama/ollama:latest
+          env:
+            - name: OLLAMA_HOST
+              value: "http://ollama.ai.svc.cluster.local:80"
+          command:
+            - sh
+            - -c
+            - |
+              until curl -sf http://ollama.ai.svc.cluster.local/api/tags; do
+                echo "waiting for ollama..."; sleep 3
+              done
+              ollama pull gemma4:31b-cloud

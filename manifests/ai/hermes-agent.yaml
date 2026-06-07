@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-agent-data
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: hermes-agent-pv
+  resources:
+    requests:
+      storage: 256Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-agent
+  namespace: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hermes-agent
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+    spec:
+      containers:
+        - name: hermes-agent
+          image: nousresearch/hermes-agent:latest
+          command:
+            - sh
+            - -c
+            - |
+              hermes gateway start &
+              hermes dashboard --host 0.0.0.0 --port 9119
+          stdin: true
+          tty: true
+          ports:
+            - containerPort: 8642  # gateway / OpenAI-compatible API
+            - containerPort: 9119  # web dashboard
+            - containerPort: 3000  # workspace UI
+          volumeMounts:
+            - name: data
+              mountPath: /root/.hermes
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hermes-agent-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent
+  namespace: ai
+spec:
+  selector:
+    app: hermes-agent
+  type: ClusterIP
+  ports:
+    - name: gateway
+      port: 8642
+      targetPort: 8642
+    - name: dashboard
+      port: 9119
+      targetPort: 9119
+    - name: workspace
+      port: 3000
+      targetPort: 3000

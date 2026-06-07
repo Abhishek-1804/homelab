@@ -189,3 +189,16 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   hostPath:
     path: /homelab-data/immich/ml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hermes-agent-pv
+spec:
+  capacity:
+    storage: 256Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /homelab-data/hermes-agent

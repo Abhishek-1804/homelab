@@ -33,8 +33,19 @@ spec:
         - ollama.homelab.local
         - open-webui.homelab.local
         - n8n.homelab.local
+        - hermes.homelab.local
       secretName: ai-tls
   rules:
+    - host: hermes.homelab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hermes-agent
+                port:
+                  number: 9119
     - host: ollama.homelab.local
       http:
         paths:
