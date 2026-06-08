@@ -27,9 +27,19 @@ spec:
       labels:
         app: n8n
     spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /home/node/.n8n"]
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.n8n
       containers:
         - name: n8n
           image: docker.n8n.io/n8nio/n8n
+          env:
+            - name: N8N_PORT
+              value: "5678"
           ports:
             - containerPort: 5678
           volumeMounts:
