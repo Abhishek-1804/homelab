@@ -1,33 +1,16 @@
 cluster := "homelab"
 
-# install all required dependencies
-[macos]
+# local tool directory — all deps live here, no system package manager needed
+bin := justfile_directory() / "bin"
+
+# put local bin first so every recipe uses these binaries
+export PATH := bin + ":" + env_var('PATH')
+# keep helm plugins (helm-diff) local to the repo
+export HELM_DATA_HOME := bin / ".helm"
+
+# download any missing dependencies into ./bin (no system package manager)
 install-deps:
-    brew install kind kubectl yq
-
-[linux]
-install-deps:
-    curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64 \
-        && chmod +x /tmp/kind && sudo mv /tmp/kind /usr/local/bin/kind
-    curl -Lo /tmp/kubectl "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-        && chmod +x /tmp/kubectl && sudo mv /tmp/kubectl /usr/local/bin/kubectl
-    curl -Lo /tmp/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
-        && chmod +x /tmp/yq && sudo mv /tmp/yq /usr/local/bin/yq
-
-# check required dependencies
-[macos]
-check-deps:
-    @command -v kind    >/dev/null || (echo "missing: kind    → brew install kind"    && exit 1)
-    @command -v kubectl >/dev/null || (echo "missing: kubectl → brew install kubectl" && exit 1)
-    @command -v yq      >/dev/null || (echo "missing: yq      → brew install yq"      && exit 1)
-    @echo "all dependencies satisfied"
-
-[linux]
-check-deps:
-    @command -v kind    >/dev/null || (echo "missing: kind    → https://kind.sigs.k8s.io/docs/user/quick-start/#installation" && exit 1)
-    @command -v kubectl >/dev/null || (echo "missing: kubectl → https://dl.k8s.io/release/stable.txt"                         && exit 1)
-    @command -v yq      >/dev/null || (echo "missing: yq      → https://github.com/mikefarah/yq/releases"                     && exit 1)
-    @echo "all dependencies satisfied"
+    @hack/install-deps.sh "{{bin}}"
 
 # apply manifests to an existing cluster
 sync:
@@ -35,7 +18,7 @@ sync:
     kubectl apply -f manifests/ -R
 
 # create cluster and deploy (skips cluster creation if already exists)
-deploy: check-deps
+deploy: install-deps
     mkdir -p data
     kind get clusters | grep -q '^{{cluster}}$' || \
         DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \

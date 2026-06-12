@@ -40,15 +40,18 @@ All services are accessible via NodePort at the host's Tailscale IP (`100.122.25
 
 ## Prerequisites
 
-```
-brew install kind kubectl yq
-```
-
-Or just run:
+Downloads pinned `kind`, `kubectl`, `helm`, `helmfile`, and `yq` binaries
+(plus the `helm-diff` plugin) into a local `bin/` — no system package manager
+required, works on macOS and Linux (amd64/arm64):
 
 ```
 just install-deps
 ```
+
+All other recipes use these local binaries (`bin/` is first on `PATH`).
+
+> To monitor the cluster with [k9s](https://k9scli.io), install it separately —
+> it is not managed by `just install-deps`.
 
 ## Getting started
 
