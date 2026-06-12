@@ -40,3 +40,5 @@ nodes:
         hostPort: 3013  # it-tools
       - containerPort: 30014
         hostPort: 3014  # libreoffice
+      - containerPort: 30015
+        hostPort: 3015  # foldingathome

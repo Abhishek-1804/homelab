@@ -1,0 +1,81 @@
+# Folding@home — donate spare CPU to protein-folding research.
+#
+# RESOURCE CONTROL (the thing you most likely want to tune):
+#   * `resources.limits.cpu` below is the HARD cap — the kernel throttles the
+#     pod so it can never use more CPU time than this, no matter how many
+#     threads the folding client spawns. Lower it to fold gentler, raise it
+#     to fold harder. `requests` is what the scheduler reserves.
+#   * After first start, open the web control UI (host port 3015) to set the
+#     CPU slot count and your folding identity/team. Keep the slot count <=
+#     the CPU limit so FAH does not spawn threads that just get throttled.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: foldingathome-data
+  namespace: science
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: foldingathome-pv
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foldingathome
+  namespace: science
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: foldingathome
+  template:
+    metadata:
+      labels:
+        app: foldingathome
+    spec:
+      containers:
+        - name: foldingathome
+          image: lscr.io/linuxserver/foldingathome:latest
+          ports:
+            - containerPort: 7396  # web control UI
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Etc/UTC"
+          # ↓↓↓ TUNE THIS to change how much of the machine FAH may use ↓↓↓
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "2000m"
+            limits:
+              memory: "4Gi"
+              cpu: "4000m"
+          # ↑↑↑ TUNE THIS ↑↑↑
+          volumeMounts:
+            - name: data
+              mountPath: /config
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: foldingathome-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: foldingathome
+  namespace: science
+spec:
+  selector:
+    app: foldingathome
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 7396
+      nodePort: 30015

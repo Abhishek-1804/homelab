@@ -54,6 +54,11 @@ data:
             href: http://100.122.254.107:3014
             description: Office suite
             icon: libreoffice.png
+    - Science:
+        - Folding@home:
+            href: http://100.122.254.107:3015
+            description: Protein-folding research
+            icon: https://foldingathome.org/wp-content/uploads/2021/06/cropped-fah-logo-512-192x192.png
     - Media:
         - Nextcloud:
             href: http://100.122.254.107:3011

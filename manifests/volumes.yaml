@@ -202,3 +202,16 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   hostPath:
     path: /homelab-data/hermes-agent
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: foldingathome-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /homelab-data/foldingathome
