@@ -60,8 +60,9 @@ just deploy
 ```
 
 This will:
-1. Create the kind cluster (single node)
-2. Auto-map all NodePort services to host ports
+1. Start the local pull-through cache registries
+2. Create the kind cluster (single node), with each NodePort mapped to its host
+   port per the `extraPortMappings` in `kind-config.yaml`
 3. Apply all manifests
 
 Then open **http://100.122.254.107:3000** from any device on your Tailscale network.
@@ -85,6 +86,46 @@ kubectl describe pvc <name> -n <ns>        # see PV binding details
 kubectl logs -n <namespace> <pod>          # pod logs
 kubectl exec -it -n <namespace> <pod> -- bash  # shell into a pod
 ```
+
+## Adding a service
+
+Nothing is auto-discovered — each new service is wired in by hand across a few
+files. Pick the next free port number `N` (NodePort `3000N`, host port `300N`)
+and touch these files:
+
+1. **`manifests/<namespace>/<service>.yaml`** — the workload. A `Deployment`, a
+   NodePort `Service` (`nodePort: 3000N`), and a `PersistentVolumeClaim` if it
+   needs storage. Copy `manifests/science/foldingathome.yaml` as a template.
+
+2. **`manifests/volumes.yaml`** — if the service needs storage, add a static
+   `PersistentVolume` with `hostPath: /homelab-data/<service>` matching the PVC's
+   `volumeName`.
+
+3. **`manifests/namespaces.yaml`** — only if the service lives in a new namespace.
+
+4. **`manifests/kustomization.yaml`** — add the manifest path to `resources:`,
+   and add the container image to `images:` so its version is pinned centrally.
+
+5. **`kind-config.yaml`** — add an `extraPortMappings` entry mapping
+   `containerPort: 3000N` → `hostPort: 300N`. If the image comes from a new
+   registry domain, also add a mirror under `containerdConfigPatches` (and a
+   matching cache container in `hack/registry.sh`).
+
+6. **`manifests/monitoring/homepage.yaml`** — add the service to the dashboard.
+
+7. **`README.md`** — add a row to the service table above.
+
+Then apply:
+
+```bash
+just sync       # if you only changed manifests
+just rebuild    # if you changed kind-config.yaml — port mappings and registry
+                # mirrors only take effect when the cluster is created
+```
+
+> The most common gotcha: edits to `kind-config.yaml` do **nothing** on a running
+> cluster. Port mappings and registry mirrors are baked in at cluster-creation
+> time, so a new host port or registry requires `just rebuild`, not `just sync`.
 
 ## Structure
 
