@@ -1,0 +1,67 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# All manifests to apply. Kustomize sorts these so Namespaces come first.
+resources:
+  - namespaces.yaml
+  - volumes.yaml
+  - it/it-tools.yaml
+  - it/libreoffice.yaml
+  - science/foldingathome.yaml
+  - ai/n8n.yaml
+  - ai/hermes-agent.yaml
+  - ai/ollama.yaml
+  - ai/openwebui.yaml
+  - monitoring/prometheus.yaml
+  - monitoring/grafana.yaml
+  - monitoring/uptime-kuma.yaml
+  - monitoring/home-assistant.yaml
+  - monitoring/homepage.yaml
+  - media/nextcloud.yaml
+  - media/immich.yaml
+  - media/plex.yaml
+  - media/jellyfin.yaml
+
+# Single source of truth for image versions. `name` matches the image in the
+# manifest; `newTag` overrides its version everywhere. Bump versions here only.
+images:
+  - name: busybox
+    newTag: latest
+  - name: corentinth/it-tools
+    newTag: latest
+  - name: docker.io/valkey/valkey
+    newTag: 8-bookworm
+  - name: docker.n8n.io/n8nio/n8n
+    newTag: latest
+  - name: ghcr.io/gethomepage/homepage
+    newTag: latest
+  - name: ghcr.io/immich-app/immich-machine-learning
+    newTag: release
+  - name: ghcr.io/immich-app/immich-server
+    newTag: release
+  - name: ghcr.io/immich-app/postgres
+    newTag: 14-vectorchord0.3.0
+  - name: ghcr.io/open-webui/open-webui
+    newTag: main
+  - name: grafana/grafana
+    newTag: latest
+  - name: homeassistant/home-assistant
+    newTag: latest
+  - name: jellyfin/jellyfin
+    newTag: latest
+  - name: louislam/uptime-kuma
+    newTag: latest
+  - name: lscr.io/linuxserver/foldingathome
+    newTag: latest
+  - name: lscr.io/linuxserver/libreoffice
+    newTag: latest
+  - name: nextcloud
+    newTag: latest
+  - name: nousresearch/hermes-agent
+    newTag: latest
+  - name: ollama/ollama
+    newTag: latest
+  - name: plexinc/pms-docker
+    newTag: latest
+  - name: prom/prometheus
+    newTag: latest
