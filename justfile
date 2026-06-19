@@ -38,3 +38,25 @@ destroy:
 
 # destroy and recreate cluster from scratch
 rebuild: destroy deploy
+
+# --- global docker cleanup (affects ALL docker, not just homelab) ---
+
+# stop and remove every container
+docker-clean-containers:
+    #!/usr/bin/env bash
+    ids=$(docker ps -aq); [ -n "$ids" ] && docker rm -f $ids || echo "no containers"
+
+# remove every image (clears containers first — they hold image references)
+docker-clean-images: docker-clean-containers
+    #!/usr/bin/env bash
+    ids=$(docker images -aq); [ -n "$ids" ] && docker rmi -f $ids || echo "no images"
+
+# remove every volume (clears containers first — running ones hold volumes)
+docker-clean-volumes: docker-clean-containers
+    #!/usr/bin/env bash
+    ids=$(docker volume ls -q); [ -n "$ids" ] && docker volume rm -f $ids || echo "no volumes"
+
+# remove every user-defined network (clears containers first; built-ins kept)
+docker-clean-networks: docker-clean-containers
+    #!/usr/bin/env bash
+    ids=$(docker network ls --filter type=custom -q); [ -n "$ids" ] && docker network rm $ids || echo "no networks"
