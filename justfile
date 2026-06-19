@@ -16,34 +16,20 @@ install-deps:
 sync:
     kubectl apply -k manifests/
 
-# pull every image kustomize will deploy into OrbStack's image store, which
-# persists across cluster rebuilds. Image list is read from the rendered
-# manifests, so it never drifts. Does not need a running cluster.
-load-images:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    kubectl kustomize manifests/ | yq -N '.. | select(has("image")) | .image' | sort -u | while read -r img; do
-        echo "→ $img"
-        docker pull "$img"
-    done
+# start the local pull-through cache registries (cache survives rebuilds)
+registry:
+    @hack/registry.sh
 
-# inject the pulled images from OrbStack into the kind node's containerd —
-# the part `destroy` wipes and would otherwise re-pull from the internet.
-kind-load:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    kubectl kustomize manifests/ | yq -N '.. | select(has("image")) | .image' | sort -u | while read -r img; do
-        echo "→ $img"
-        kind load docker-image "$img" --name {{cluster}}
-    done
+# stop and remove the cache registries (cached layers in their volumes stay)
+registry-clean:
+    -docker rm -f kind-reg-dockerio kind-reg-ghcr kind-reg-lscr kind-reg-n8n
 
 # create cluster and deploy (skips cluster creation if already exists)
-deploy: install-deps load-images
+deploy: install-deps registry
     mkdir -p data
     kind get clusters | grep -q '^{{cluster}}$' || \
         DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
         | kind create cluster --name {{cluster}} --config -
-    just kind-load
     just sync
 
 # destroy kind cluster

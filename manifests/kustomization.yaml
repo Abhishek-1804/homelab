@@ -33,6 +33,8 @@ images:
     newTag: 8-bookworm
   - name: docker.n8n.io/n8nio/n8n
     newTag: latest
+  - name: ghcr.io/bigboot/autokuma
+    newTag: latest
   - name: ghcr.io/gethomepage/homepage
     newTag: latest
   - name: ghcr.io/immich-app/immich-machine-learning

@@ -7,6 +7,20 @@
 # reachable from other Tailscale devices without any /etc/hosts or TLS setup.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+# Route each upstream registry through its local pull-through cache (started by
+# hack/registry.sh). The cache persists in a docker volume and survives cluster
+# rebuilds, so images come from local layers instead of being re-pulled.
+# Endpoints are the cache container names on the shared "kind" docker network.
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+      endpoint = ["http://kind-reg-dockerio:5000"]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
+      endpoint = ["http://kind-reg-ghcr:5000"]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."lscr.io"]
+      endpoint = ["http://kind-reg-lscr:5000"]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.n8n.io"]
+      endpoint = ["http://kind-reg-n8n:5000"]
 nodes:
   - role: control-plane
     extraPortMappings:
