@@ -60,3 +60,6 @@ docker-clean-volumes: docker-clean-containers
 docker-clean-networks: docker-clean-containers
     #!/usr/bin/env bash
     ids=$(docker network ls --filter type=custom -q); [ -n "$ids" ] && docker network rm $ids || echo "no networks"
+
+# wipe ALL docker state: containers, images, volumes, networks
+docker-nuke: docker-clean-images docker-clean-volumes docker-clean-networks
