@@ -75,7 +75,7 @@ Then open **http://100.122.254.107:3000** from any device on your Tailscale netw
 
 ```bash
 just deploy    # create cluster and deploy everything
-just sync      # re-apply manifests to existing cluster
+just sync-manifests  # re-apply manifests to existing cluster
 just rebuild   # destroy and recreate from scratch
 just destroy   # delete the cluster
 ```
@@ -120,14 +120,14 @@ and touch these files:
 Then apply:
 
 ```bash
-just sync       # if you only changed manifests
+just sync-manifests  # if you only changed manifests
 just rebuild    # if you changed kind-config.yaml — port mappings and registry
                 # mirrors only take effect when the cluster is created
 ```
 
 > The most common gotcha: edits to `kind-config.yaml` do **nothing** on a running
 > cluster. Port mappings and registry mirrors are baked in at cluster-creation
-> time, so a new host port or registry requires `just rebuild`, not `just sync`.
+> time, so a new host port or registry requires `just rebuild`, not `just sync-manifests`.
 
 ## Structure
 
