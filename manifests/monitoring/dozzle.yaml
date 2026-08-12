@@ -1,0 +1,86 @@
+# Dozzle in k8s mode reads pod logs through the Kubernetes API rather than a
+# Docker socket — the socket on this host only sees the kind node container and
+# the pull-through cache registries, not the pods running inside the node.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dozzle
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dozzle
+rules:
+  # pods/log is the log stream itself; nodes is used to group pods by host
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "nodes"]
+    verbs: ["get", "list", "watch"]
+  # workload owners, so pods are labelled with what created them
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  # CPU/memory stats — needs metrics-server, which this cluster does not run.
+  # Dozzle degrades to logs-only without it; the rule is here so stats light up
+  # if metrics-server is ever added.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dozzle
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dozzle
+subjects:
+  - kind: ServiceAccount
+    name: dozzle
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dozzle
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dozzle
+  template:
+    metadata:
+      labels:
+        app: dozzle
+    spec:
+      serviceAccountName: dozzle
+      containers:
+        - name: dozzle
+          image: ghcr.io/amir20/dozzle:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # without this Dozzle looks for a Docker socket and finds nothing
+            - name: DOZZLE_MODE
+              value: k8s
+            - name: DOZZLE_NO_ANALYTICS
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dozzle
+  namespace: monitoring
+spec:
+  selector:
+    app: dozzle
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30016

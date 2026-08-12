@@ -25,6 +25,8 @@ All services are accessible via NodePort at the host's Tailscale IP (`100.122.25
 | Immich | 3012 | Photo and video management |
 | IT Tools | 3013 | Developer utilities |
 | LibreOffice | 3014 | Online office suite |
+| Folding@home | 3015 | Protein-folding research |
+| Dozzle | 3016 | Live container logs |
 
 ## What this teaches
 
@@ -139,7 +141,7 @@ homelab/
     ├── namespaces.yaml      # namespace definitions
     ├── volumes.yaml         # static PersistentVolumes backed by ./data/
     ├── ai/                  # ollama, open-webui, n8n, hermes-agent
-    ├── monitoring/          # prometheus, grafana, uptime-kuma, homepage, home-assistant
+    ├── monitoring/          # prometheus, grafana, uptime-kuma, homepage, home-assistant, dozzle
     ├── media/               # plex, jellyfin, nextcloud, immich
     └── it/                  # it-tools, libreoffice
 ```

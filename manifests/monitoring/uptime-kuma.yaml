@@ -87,6 +87,12 @@ data:
     url = "http://prometheus.monitoring.svc.cluster.local:9090/-/healthy"
     interval = 60
 
+    [dozzle]
+    type = "http"
+    name = "Dozzle"
+    url = "http://dozzle.monitoring.svc.cluster.local:80"
+    interval = 60
+
     [home-assistant]
     type = "http"
     name = "Home Assistant"

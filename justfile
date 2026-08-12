@@ -13,7 +13,7 @@ install-deps:
     @hack/install-deps.sh "{{bin}}"
 
 # apply manifests to an existing cluster (kustomize applies image versions)
-sync:
+sync-manifests:
     kubectl apply -k manifests/
 
 # start the local pull-through cache registries (cache survives rebuilds)
@@ -30,7 +30,7 @@ deploy: install-deps registry
     kind get clusters | grep -q '^{{cluster}}$' || \
         DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
         | kind create cluster --name {{cluster}} --config -
-    just sync
+    just sync-manifests
 
 # destroy kind cluster
 destroy:
