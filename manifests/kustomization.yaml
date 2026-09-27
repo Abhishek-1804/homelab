@@ -14,7 +14,7 @@ resources:
   - ai/openwebui.yaml
   - monitoring/prometheus.yaml
   - monitoring/grafana.yaml
-  - monitoring/uptime-kuma.yaml
+  - monitoring/gatus.yaml
   - monitoring/home-assistant.yaml
   - monitoring/dozzle.yaml
   - monitoring/homepage.yaml
@@ -36,8 +36,6 @@ images:
     newTag: latest
   - name: ghcr.io/amir20/dozzle
     newTag: latest
-  - name: ghcr.io/bigboot/autokuma
-    newTag: latest
   - name: ghcr.io/gethomepage/homepage
     newTag: latest
   - name: ghcr.io/immich-app/immich-machine-learning
@@ -48,13 +46,13 @@ images:
     newTag: 14-vectorchord0.3.0
   - name: ghcr.io/open-webui/open-webui
     newTag: main
+  - name: ghcr.io/twin/gatus
+    newTag: latest
   - name: grafana/grafana
     newTag: latest
   - name: homeassistant/home-assistant
     newTag: latest
   - name: jellyfin/jellyfin
-    newTag: latest
-  - name: louislam/uptime-kuma
     newTag: latest
   - name: lscr.io/linuxserver/foldingathome
     newTag: latest

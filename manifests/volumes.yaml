@@ -76,7 +76,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: uptime-kuma-pv
+  name: gatus-pv
 spec:
   capacity:
     storage: 1Gi
@@ -84,7 +84,7 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /homelab-data/uptime-kuma
+    path: /homelab-data/gatus
 ---
 apiVersion: v1
 kind: PersistentVolume

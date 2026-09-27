@@ -13,7 +13,7 @@ All services are accessible via NodePort at the host's Tailscale [MagicDNS](http
 | Homepage | [3000](http://omarchy-xps.tail53266a.ts.net:3000) | Central dashboard |
 | Grafana | 3001 | Metrics visualization |
 | Prometheus | 3002 | Metrics collection |
-| Uptime Kuma | 3003 | Uptime monitoring |
+| Gatus | 3003 | Service health checks |
 | Home Assistant | 3004 | Home automation |
 | Open WebUI | 3005 | Chat interface for Ollama |
 | Ollama | 3006 | Local LLM inference |
@@ -125,7 +125,10 @@ and touch these files:
 
 6. **`manifests/monitoring/homepage.yaml`** — add the service to the dashboard.
 
-7. **`README.md`** — add a row to the service table above.
+7. **`manifests/monitoring/gatus.yaml`** — add a health-check endpoint using the
+   service's in-cluster DNS name.
+
+8. **`README.md`** — add a row to the service table above.
 
 Then apply:
 
@@ -151,7 +154,7 @@ homelab/
     ├── namespaces.yaml      # namespace definitions
     ├── volumes.yaml         # static PersistentVolumes backed by ./data/
     ├── ai/                  # ollama, open-webui, n8n, hermes-agent
-    ├── monitoring/          # prometheus, grafana, uptime-kuma, homepage, home-assistant, dozzle
+    ├── monitoring/          # prometheus, grafana, gatus, homepage, home-assistant, dozzle
     ├── media/               # plex, jellyfin, nextcloud, immich
     └── it/                  # it-tools, libreoffice
 ```

@@ -1,0 +1,195 @@
+# Gatus health-checks every user-facing service via in-cluster DNS. Endpoints
+# are plain config: nothing to set up in a UI, works on a fresh data/ dir.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gatus-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: gatus-pv
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    # uptime history survives pod restarts
+    storage:
+      type: sqlite
+      path: /data/data.db
+    ui:
+      title: Homelab status
+      header: Homelab
+    endpoints:
+      - name: Homepage
+        group: Monitoring
+        url: "http://homepage.monitoring.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Grafana
+        group: Monitoring
+        url: "http://grafana.monitoring.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Prometheus
+        group: Monitoring
+        url: "http://prometheus.monitoring.svc.cluster.local:9090/-/healthy"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Dozzle
+        group: Monitoring
+        url: "http://dozzle.monitoring.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Home Assistant
+        group: Monitoring
+        url: "http://home-assistant.monitoring.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Open WebUI
+        group: AI
+        url: "http://open-webui.ai.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Ollama
+        group: AI
+        url: "http://ollama.ai.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: n8n
+        group: AI
+        url: "http://n8n.ai.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Hermes Agent
+        group: AI
+        url: "http://hermes-agent.ai.svc.cluster.local:9119"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Plex
+        group: Media
+        url: "http://plex.media.svc.cluster.local:80/identity"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Jellyfin
+        group: Media
+        url: "http://jellyfin.media.svc.cluster.local:80/health"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Nextcloud
+        group: Media
+        url: "http://nextcloud.media.svc.cluster.local:80/status.php"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Immich
+        group: Media
+        url: "http://immich-server.media.svc.cluster.local:80/api/server/ping"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: IT Tools
+        group: IT Tools
+        url: "http://it-tools.it.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: LibreOffice
+        group: IT Tools
+        url: "http://libreoffice.it.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+      - name: Folding@home
+        group: Science
+        url: "http://foldingathome.science.svc.cluster.local:80"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+          - "[STATUS] < 400"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+  namespace: monitoring
+spec:
+  replicas: 1
+  # SQLite: never let two pods open data.db at once during a rollout
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+    spec:
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        # mounted as a directory (not subPath) so edits reach the pod and Gatus
+        # hot-reloads them
+        - name: config
+          configMap:
+            name: gatus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: gatus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+  namespace: monitoring
+spec:
+  selector:
+    app: gatus
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30003

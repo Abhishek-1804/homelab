@@ -24,10 +24,10 @@ data:
             href: http://omarchy-xps.tail53266a.ts.net:3002
             description: Metrics collection
             icon: prometheus.png
-        - Uptime Kuma:
+        - Gatus:
             href: http://omarchy-xps.tail53266a.ts.net:3003
-            description: Uptime monitoring
-            icon: uptime-kuma.png
+            description: Service health checks
+            icon: gatus.png
         - Dozzle:
             href: http://omarchy-xps.tail53266a.ts.net:3016
             description: Live container logs
