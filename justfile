@@ -39,9 +39,11 @@ destroy:
 # destroy and recreate cluster from scratch
 rebuild: destroy deploy
 
+# delete all service data (files are owned by container users, hence sudo)
 clean-data:
     sudo rm -rf data/
 
+# delete the local tool binaries installed by install-deps
 clean-bin:
     rm -rf bin/
 
