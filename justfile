@@ -1,16 +1,10 @@
 cluster := "homelab"
 
-# local tool directory — all deps live here, no system package manager needed
-bin := justfile_directory() / "bin"
+# tools (kind, kubectl, helm, ...) and HELM_DATA_HOME come from mise.toml
 
-# put local bin first so every recipe uses these binaries
-export PATH := bin + ":" + env_var('PATH')
-# keep helm plugins (helm-diff) local to the repo
-export HELM_DATA_HOME := bin / ".helm"
-
-# download any missing dependencies into ./bin (no system package manager)
-install-deps:
-    @hack/install-deps.sh "{{bin}}"
+# install the helm-diff plugin (required by `helmfile apply`) into .helm/
+helm-plugins:
+    @helm plugin list | grep -q '^diff' || helm plugin install https://github.com/databus23/helm-diff --version v3.9.13
 
 # apply manifests to an existing cluster (kustomize applies image versions)
 sync-manifests:
@@ -25,7 +19,7 @@ registry-clean:
     -docker rm -f kind-reg-dockerio kind-reg-ghcr kind-reg-lscr kind-reg-n8n
 
 # create cluster and deploy (skips cluster creation if already exists)
-deploy: install-deps registry
+deploy: helm-plugins registry
     mkdir -p data
     kind get clusters | grep -q '^{{cluster}}$' || \
         DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
@@ -42,10 +36,6 @@ rebuild: destroy deploy
 # delete all service data (files are owned by container users, hence sudo)
 clean-data:
     sudo rm -rf data/
-
-# delete the local tool binaries installed by install-deps
-clean-bin:
-    rm -rf bin/
 
 # --- global docker cleanup (affects ALL docker, not just homelab) ---
 

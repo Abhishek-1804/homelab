@@ -1,0 +1,12 @@
+# pinned CLI tools — the one exception to "self-contained": mise installs these
+# into ~/.local/share/mise and puts them on PATH inside this repo
+[tools]
+kubectl  = "1.30.2"
+kind     = "0.23.0"
+yq       = "4.44.2"
+helm     = "3.17.3"
+helmfile = "0.166.0"
+
+[env]
+# keep helm plugins (helm-diff) local to the repo
+HELM_DATA_HOME = "{{config_root}}/.helm"

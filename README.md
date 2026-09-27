@@ -42,18 +42,25 @@ All services are accessible via NodePort at the host's Tailscale [MagicDNS](http
 
 ## Prerequisites
 
-Downloads pinned `kind`, `kubectl`, `helm`, `helmfile`, and `yq` binaries
-(plus the `helm-diff` plugin) into a local `bin/` — no system package manager
-required, works on macOS and Linux (amd64/arm64):
+[Docker](https://docs.docker.com/get-docker/), [just](https://just.systems), and
+[mise](https://mise.jdx.dev) with shell activation (`mise activate`) set up.
+
+Everything else is self-contained, except for the CLI tools. `kind`, `kubectl`,
+`helm`, `helmfile`, and `yq` are pinned in `mise.toml`. mise installs
+them into its own directory (`~/.local/share/mise`), not into this repo. It
+puts them on `PATH` and sets `HELM_DATA_HOME=.helm/` whenever you're inside the
+repo. One-time setup:
 
 ```
-just install-deps
+mise trust     # allow mise to load this repo's mise.toml
+mise install   # install the pinned tools
 ```
 
-All other recipes use these local binaries (`bin/` is first on `PATH`).
+`just deploy` also installs the `helm-diff` plugin (needed by `helmfile apply`)
+into `.helm/`.
 
-> To monitor the cluster with [k9s](https://k9scli.io), install it separately —
-> it is not managed by `just install-deps`.
+> To monitor the cluster with [k9s](https://k9scli.io), install it separately
+> (e.g. in your global mise config) — this repo doesn't manage it.
 
 ## Getting started
 
@@ -62,7 +69,7 @@ just deploy
 ```
 
 This will:
-1. Start the local pull-through cache registries
+1. Install the `helm-diff` plugin and start the local pull-through cache registries
 2. Create the kind cluster (single node), with each NodePort mapped to its host
    port per the `extraPortMappings` in `kind-config.yaml`
 3. Apply all manifests
@@ -88,7 +95,8 @@ just deploy    # create cluster and deploy everything
 just sync-manifests  # re-apply manifests to existing cluster
 just rebuild   # destroy and recreate from scratch
 just destroy   # delete the cluster
-just clean     # delete data/ and bin/ (asks first)
+just clean-data  # delete all service data in data/ (uses sudo)
+just registry-clean  # stop and remove the cache registries
 ```
 
 ```bash
@@ -149,7 +157,9 @@ just rebuild    # if you changed kind-config.yaml — port mappings and registry
 homelab/
 ├── kind-config.yaml         # cluster topology (node, ports, data mount)
 ├── helmfile.yaml            # helm releases (currently unused)
+├── mise.toml                # pinned CLI tools (kind, kubectl, helm, ...)
 ├── justfile                 # all automation recipes
+├── hack/registry.sh         # pull-through cache registries
 ├── data/                    # persistent volume data (gitignored)
 └── manifests/
     ├── namespaces.yaml      # namespace definitions
