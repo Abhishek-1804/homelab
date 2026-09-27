@@ -71,6 +71,14 @@ Then open **http://100.122.254.107:3000** from any device on your Tailscale netw
 
 > If you change the Tailscale IP, update `100.122.254.107` in `justfile` and `manifests/monitoring/homepage.yaml`.
 
+> **Disconnect any VPN (e.g. Surfshark) before deploying.** WireGuard VPNs use
+> a smaller MTU (1280) than Docker's bridge (1500), so TLS handshakes from
+> containers hang even though the host's own traffic works. The cache
+> registries fail to reach their upstreams (`TLS handshake timeout` in
+> `docker logs kind-reg-dockerio`) and every pod ends up in `ImagePullBackOff`.
+> After disconnecting, delete the stuck pods (or run `just rebuild`) so they
+> retry.
+
 ## Useful commands
 
 ```bash
