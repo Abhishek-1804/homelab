@@ -36,27 +36,31 @@ All services are accessible via NodePort at the host's Tailscale [MagicDNS](http
 
 **Storage** — static PersistentVolumes back each service with a fixed hostPath (`/homelab-data/<service>`), which kind bind-mounts from `./data/` on your host. Data survives cluster destruction and recreation because it lives on the host filesystem. The PV → PVC binding flow is explicit: you can see exactly which directory backs which service.
 
-**Declarative configuration** — nothing is set up manually inside the cluster. Every resource is a YAML manifest in this repo. Deleting and recreating the entire cluster with `just rebuild` produces the same result every time.
+**Declarative configuration** — nothing is set up manually inside the cluster. Every resource is a YAML manifest in this repo. Deleting and recreating the entire cluster with `mise run rebuild` produces the same result every time.
 
 **Namespaces** — services are grouped into `ai`, `monitoring`, `media`, and `it` namespaces.
 
 ## Prerequisites
 
-[Docker](https://docs.docker.com/get-docker/), [just](https://just.systems), and
-[mise](https://mise.jdx.dev) with shell activation (`mise activate`) set up.
+[Docker](https://docs.docker.com/get-docker/) and [mise](https://mise.jdx.dev).
+Shell activation (`mise activate`) is optional. The tasks load the pinned tools
+themselves, but activation puts `kubectl` and friends on `PATH` for the
+commands you type by hand.
 
 Everything else is self-contained, except for the CLI tools. `kind`, `kubectl`,
 `helm`, `helmfile`, and `yq` are pinned in `mise.toml`. mise installs
 them into its own directory (`~/.local/share/mise`), not into this repo. It
 puts them on `PATH` and sets `HELM_DATA_HOME=.helm/` whenever you're inside the
-repo. One-time setup:
+repo. `mise.toml` also holds every automation task: run one with
+`mise run <task>` (or `mise r <task>`), and list them with `mise tasks`.
+One-time setup:
 
 ```
 mise trust     # allow mise to load this repo's mise.toml
 mise install   # install the pinned tools
 ```
 
-`just deploy` also installs the `helm-diff` plugin (needed by `helmfile apply`)
+`mise run deploy` also installs the `helm-diff` plugin (needed by `helmfile apply`)
 into `.helm/`.
 
 > To monitor the cluster with [k9s](https://k9scli.io), install it separately
@@ -65,7 +69,7 @@ into `.helm/`.
 ## Getting started
 
 ```
-just deploy
+mise run deploy
 ```
 
 This will:
@@ -85,18 +89,19 @@ Then open **http://omarchy-xps.tail53266a.ts.net:3000** from any device on your 
 > containers hang even though the host's own traffic works. The cache
 > registries fail to reach their upstreams (`TLS handshake timeout` in
 > `docker logs kind-reg-dockerio`) and every pod ends up in `ImagePullBackOff`.
-> After disconnecting, delete the stuck pods (or run `just rebuild`) so they
+> After disconnecting, delete the stuck pods (or run `mise run rebuild`) so they
 > retry.
 
 ## Useful commands
 
 ```bash
-just deploy    # create cluster and deploy everything
-just sync-manifests  # re-apply manifests to existing cluster
-just rebuild   # destroy and recreate from scratch
-just destroy   # delete the cluster
-just clean-data  # delete all service data in data/ (uses sudo)
-just registry-clean  # stop and remove the cache registries
+mise tasks                    # list every task
+mise run deploy               # create cluster and deploy everything
+mise run sync-manifests       # re-apply manifests to existing cluster
+mise run rebuild              # destroy and recreate from scratch
+mise run destroy              # delete the cluster
+mise run clean-data           # delete all service data in data/ (uses sudo)
+mise run registry-clean       # stop and remove the cache registries
 ```
 
 ```bash
@@ -142,14 +147,14 @@ and touch these files:
 Then apply:
 
 ```bash
-just sync-manifests  # if you only changed manifests
-just rebuild    # if you changed kind-config.yaml — port mappings and registry
-                # mirrors only take effect when the cluster is created
+mise run sync-manifests  # if you only changed manifests
+mise run rebuild         # if you changed kind-config.yaml — port mappings and
+                         # registry mirrors only take effect when the cluster is created
 ```
 
 > The most common gotcha: edits to `kind-config.yaml` do **nothing** on a running
 > cluster. Port mappings and registry mirrors are baked in at cluster-creation
-> time, so a new host port or registry requires `just rebuild`, not `just sync-manifests`.
+> time, so a new host port or registry requires `mise run rebuild`, not `mise run sync-manifests`.
 
 ## Structure
 
@@ -157,8 +162,7 @@ just rebuild    # if you changed kind-config.yaml — port mappings and registry
 homelab/
 ├── kind-config.yaml         # cluster topology (node, ports, data mount)
 ├── helmfile.yaml            # helm releases (currently unused)
-├── mise.toml                # pinned CLI tools (kind, kubectl, helm, ...)
-├── justfile                 # all automation recipes
+├── mise.toml                # pinned CLI tools and all automation tasks
 ├── hack/registry.sh         # pull-through cache registries
 ├── data/                    # persistent volume data (gitignored)
 └── manifests/

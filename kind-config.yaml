@@ -1,6 +1,6 @@
 # Single-node kind cluster.
 #
-# extraMounts is injected at deploy time by `just deploy` using yq since
+# extraMounts is injected at deploy time by `mise run deploy` using yq since
 # kind requires an absolute hostPath — resolved from $(pwd)/data at runtime.
 #
 # extraPortMappings expose each NodePort service on the host so they are

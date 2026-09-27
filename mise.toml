@@ -1,5 +1,6 @@
-# pinned CLI tools — the one exception to "self-contained": mise installs these
-# into ~/.local/share/mise and puts them on PATH inside this repo
+# pinned CLI tools and every automation task (`mise run <task>`, `mise tasks`
+# to list). mise is the one exception to "self-contained": it installs the
+# tools into ~/.local/share/mise and puts them on PATH inside this repo
 [tools]
 kubectl  = "1.30.2"
 kind     = "0.23.0"
@@ -10,3 +11,77 @@ helmfile = "0.166.0"
 [env]
 # keep helm plugins (helm-diff) local to the repo
 HELM_DATA_HOME = "{{config_root}}/.helm"
+
+[vars]
+cluster = "homelab"
+
+# tasks run from the repo root with the tools and env above. `depends` run in
+# parallel; `run = [{ task = ... }]` steps run in order.
+
+[tasks.helm-plugins]
+description = "Install the helm-diff plugin (required by `helmfile apply`) into .helm/"
+quiet = true
+run = "helm plugin list | grep -q '^diff' || helm plugin install https://github.com/databus23/helm-diff --version v3.9.13"
+
+[tasks.sync-manifests]
+description = "Apply manifests to an existing cluster (kustomize applies image versions)"
+run = "kubectl apply -k manifests/"
+
+[tasks.registry]
+description = "Start the local pull-through cache registries (cache survives rebuilds)"
+quiet = true
+run = "hack/registry.sh"
+
+[tasks.registry-clean]
+description = "Stop and remove the cache registries (cached layers in their volumes stay)"
+run = "docker rm -f kind-reg-dockerio kind-reg-ghcr kind-reg-lscr kind-reg-n8n || true"
+
+[tasks.deploy]
+description = "Create cluster and deploy (skips cluster creation if already exists)"
+depends = ["helm-plugins", "registry"]
+run = [
+    '''
+mkdir -p data
+kind get clusters | grep -q '^{{vars.cluster}}$' || \
+    DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
+    | kind create cluster --name {{vars.cluster}} --config -
+''',
+    { task = "sync-manifests" },
+]
+
+[tasks.destroy]
+description = "Destroy kind cluster"
+run = "kind delete cluster --name {{vars.cluster}}"
+
+[tasks.rebuild]
+description = "Destroy and recreate cluster from scratch"
+run = [{ task = "destroy" }, { task = "deploy" }]
+
+[tasks.clean-data]
+description = "Delete all service data (files are owned by container users, hence sudo)"
+run = "sudo rm -rf data/"
+
+# --- global docker cleanup (affects ALL docker, not just homelab) ---
+
+[tasks.docker-clean-containers]
+description = "Stop and remove every container"
+run = 'ids=$(docker ps -aq); [ -n "$ids" ] && docker rm -f $ids || echo "no containers"'
+
+[tasks.docker-clean-images]
+description = "Remove every image (clears containers first — they hold image references)"
+depends = ["docker-clean-containers"]
+run = 'ids=$(docker images -aq); [ -n "$ids" ] && docker rmi -f $ids || echo "no images"'
+
+[tasks.docker-clean-volumes]
+description = "Remove every volume (clears containers first — running ones hold volumes)"
+depends = ["docker-clean-containers"]
+run = 'ids=$(docker volume ls -q); [ -n "$ids" ] && docker volume rm -f $ids || echo "no volumes"'
+
+[tasks.docker-clean-networks]
+description = "Remove every user-defined network (clears containers first; built-ins kept)"
+depends = ["docker-clean-containers"]
+run = 'ids=$(docker network ls --filter type=custom -q); [ -n "$ids" ] && docker network rm $ids || echo "no networks"'
+
+[tasks.docker-nuke]
+description = "Wipe ALL docker state: containers, images, volumes, networks"
+depends = ["docker-clean-images", "docker-clean-volumes", "docker-clean-networks"]

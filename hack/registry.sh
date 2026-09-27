@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pull-through cache registries: cluster rebuilds load images from a local
 # cache instead of re-pulling from the internet. One proxy per upstream; the
-# cache lives in a named docker volume (survives rebuilds). Run by `just deploy`.
+# cache lives in a named docker volume (survives rebuilds). Run by `mise run deploy`.
 set -euo pipefail
 
 NET=kind  # kind attaches nodes to a docker network named "kind"
