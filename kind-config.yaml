@@ -21,6 +21,13 @@ containerdConfigPatches:
       endpoint = ["http://kind-reg-lscr:5000"]
     [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.n8n.io"]
       endpoint = ["http://kind-reg-n8n:5000"]
+# kubelet pulls one image at a time by default, so on a fresh cluster a single
+# multi-GB image (ollama, open-webui) blocks every other pod behind it.
+kubeadmConfigPatches:
+  - |
+    kind: KubeletConfiguration
+    serializeImagePulls: false
+    maxParallelImagePulls: 4
 nodes:
   - role: control-plane
     extraPortMappings:

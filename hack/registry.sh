@@ -18,7 +18,9 @@ for r in \
     if [ -z "$(docker ps -q -f "name=^${name}$")" ]; then
         echo "→ $name → $upstream"
         docker rm -f "$name" >/dev/null 2>&1 || true   # recreate if stopped; volume persists
-        docker run -d --name "$name" \
+        # registry:2 panics if the upstream is unreachable at startup (e.g.
+        # a network blip); restart so it recovers instead of staying dead.
+        docker run -d --name "$name" --restart unless-stopped \
             -e REGISTRY_PROXY_REMOTEURL="$upstream" \
             -v "$name:/var/lib/registry" \
             registry:2 >/dev/null
