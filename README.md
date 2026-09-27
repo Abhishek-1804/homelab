@@ -6,11 +6,11 @@ The goal isn't production readiness — it's to have a real cluster running real
 
 ## What's running
 
-All services are accessible via NodePort at the host's Tailscale IP (`100.122.254.107`). Homepage is the single entry point — open it and navigate to everything else from there.
+All services are accessible via NodePort at the host's Tailscale [MagicDNS](https://tailscale.com/kb/1081/magicdns) name (`omarchy-xps.tail53266a.ts.net`), which follows the machine even if its Tailscale IP changes. Homepage is the single entry point — open it and navigate to everything else from there.
 
 | Service | Port | Purpose |
 |---|---|---|
-| Homepage | [3000](http://100.122.254.107:3000) | Central dashboard |
+| Homepage | [3000](http://omarchy-xps.tail53266a.ts.net:3000) | Central dashboard |
 | Grafana | 3001 | Metrics visualization |
 | Prometheus | 3002 | Metrics collection |
 | Uptime Kuma | 3003 | Uptime monitoring |
@@ -67,9 +67,11 @@ This will:
    port per the `extraPortMappings` in `kind-config.yaml`
 3. Apply all manifests
 
-Then open **http://100.122.254.107:3000** from any device on your Tailscale network.
+Then open **http://omarchy-xps.tail53266a.ts.net:3000** from any device on your Tailscale network.
 
-> If you change the Tailscale IP, update `100.122.254.107` in `justfile` and `manifests/monitoring/homepage.yaml`.
+> If the machine's Tailscale hostname or tailnet changes, update `omarchy-xps.tail53266a.ts.net` in `manifests/monitoring/homepage.yaml`.
+>
+> If Chrome's **Use secure DNS** is set to a custom provider (e.g. Cloudflare), `.ts.net` names won't resolve in Chrome on this machine — set it to automatic or off at `chrome://settings/security`.
 
 > **Disconnect any VPN (e.g. Surfshark) before deploying.** WireGuard VPNs use
 > a smaller MTU (1280) than Docker's bridge (1500), so TLS handshakes from

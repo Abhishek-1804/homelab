@@ -13,71 +13,71 @@ data:
   services.yaml: |
     - Monitoring:
         - Grafana:
-            href: http://100.122.254.107:3001
+            href: http://omarchy-xps.tail53266a.ts.net:3001
             description: Metrics visualization
             icon: grafana.png
         - Home Assistant:
-            href: http://100.122.254.107:3004
+            href: http://omarchy-xps.tail53266a.ts.net:3004
             description: Home automation
             icon: home-assistant.png
         - Prometheus:
-            href: http://100.122.254.107:3002
+            href: http://omarchy-xps.tail53266a.ts.net:3002
             description: Metrics collection
             icon: prometheus.png
         - Uptime Kuma:
-            href: http://100.122.254.107:3003
+            href: http://omarchy-xps.tail53266a.ts.net:3003
             description: Uptime monitoring
             icon: uptime-kuma.png
         - Dozzle:
-            href: http://100.122.254.107:3016
+            href: http://omarchy-xps.tail53266a.ts.net:3016
             description: Live container logs
             icon: dozzle.png
     - AI:
         - Open WebUI:
-            href: http://100.122.254.107:3005
+            href: http://omarchy-xps.tail53266a.ts.net:3005
             description: Chat interface for Ollama
             icon: openai.png
         - n8n:
-            href: http://100.122.254.107:3007
+            href: http://omarchy-xps.tail53266a.ts.net:3007
             description: Workflow automation
             icon: n8n.png
         - Ollama:
-            href: http://100.122.254.107:3006
+            href: http://omarchy-xps.tail53266a.ts.net:3006
             description: LLM inference
             icon: ollama.png
         - Hermes Agent:
-            href: http://100.122.254.107:3008
+            href: http://omarchy-xps.tail53266a.ts.net:3008
             description: Autonomous AI agent
             icon: https://avatars.githubusercontent.com/u/103061224
     - IT Tools:
         - IT Tools:
-            href: http://100.122.254.107:3013
+            href: http://omarchy-xps.tail53266a.ts.net:3013
             description: Developer utilities
             icon: it-tools.png
         - LibreOffice:
-            href: http://100.122.254.107:3014
+            href: http://omarchy-xps.tail53266a.ts.net:3014
             description: Office suite
             icon: libreoffice.png
     - Science:
         - Folding@home:
-            href: http://100.122.254.107:3015
+            href: http://omarchy-xps.tail53266a.ts.net:3015
             description: Protein-folding research
             icon: https://foldingathome.org/wp-content/uploads/2021/06/cropped-fah-logo-512-192x192.png
     - Media:
         - Nextcloud:
-            href: http://100.122.254.107:3011
+            href: http://omarchy-xps.tail53266a.ts.net:3011
             description: File storage and sharing
             icon: nextcloud.png
         - Plex:
-            href: http://100.122.254.107:3009
+            href: http://omarchy-xps.tail53266a.ts.net:3009
             description: Media streaming
             icon: plex.png
         - Jellyfin:
-            href: http://100.122.254.107:3010
+            href: http://omarchy-xps.tail53266a.ts.net:3010
             description: Media streaming
             icon: jellyfin.png
         - Immich:
-            href: http://100.122.254.107:3012
+            href: http://omarchy-xps.tail53266a.ts.net:3012
             description: Photo and video management
             icon: immich.png
 
