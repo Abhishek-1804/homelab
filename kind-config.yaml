@@ -27,7 +27,7 @@ kubeadmConfigPatches:
   - |
     kind: KubeletConfiguration
     serializeImagePulls: false
-    maxParallelImagePulls: 4
+    maxParallelImagePulls: 6
 nodes:
   - role: control-plane
     extraPortMappings:
@@ -38,7 +38,7 @@ nodes:
       - containerPort: 30002
         hostPort: 3002  # prometheus
       - containerPort: 30003
-        hostPort: 3003  # uptime-kuma
+        hostPort: 3003  # gatus
       - containerPort: 30004
         hostPort: 3004  # home-assistant
       - containerPort: 30005
