@@ -39,6 +39,12 @@ destroy:
 # destroy and recreate cluster from scratch
 rebuild: destroy deploy
 
+clean-data:
+    sudo rm -rf data/
+
+clean-bin:
+    rm -rf bin/
+
 # --- global docker cleanup (affects ALL docker, not just homelab) ---
 
 # stop and remove every container

@@ -88,6 +88,7 @@ just deploy    # create cluster and deploy everything
 just sync-manifests  # re-apply manifests to existing cluster
 just rebuild   # destroy and recreate from scratch
 just destroy   # delete the cluster
+just clean     # delete data/ and bin/ (asks first)
 ```
 
 ```bash
