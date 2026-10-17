@@ -17,12 +17,8 @@ containerdConfigPatches:
       endpoint = ["http://kind-reg-dockerio:5000"]
     [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
       endpoint = ["http://kind-reg-ghcr:5000"]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."lscr.io"]
-      endpoint = ["http://kind-reg-lscr:5000"]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.n8n.io"]
-      endpoint = ["http://kind-reg-n8n:5000"]
 # kubelet pulls one image at a time by default, so on a fresh cluster a single
-# multi-GB image (ollama, open-webui) blocks every other pod behind it.
+# multi-GB image (hermes-agent) blocks every other pod behind it.
 kubeadmConfigPatches:
   - |
     kind: KubeletConfiguration
@@ -33,35 +29,9 @@ nodes:
     extraPortMappings:
       - containerPort: 30000
         hostPort: 3000  # homepage
-      - containerPort: 30001
-        hostPort: 3001  # grafana
-      - containerPort: 30002
-        hostPort: 3002  # prometheus
       - containerPort: 30003
         hostPort: 3003  # gatus
-      - containerPort: 30004
-        hostPort: 3004  # home-assistant
-      - containerPort: 30005
-        hostPort: 3005  # open-webui
-      - containerPort: 30006
-        hostPort: 3006  # ollama
-      - containerPort: 30007
-        hostPort: 3007  # n8n
       - containerPort: 30008
         hostPort: 3008  # hermes-agent
-      - containerPort: 30009
-        hostPort: 3009  # plex
-      - containerPort: 30010
-        hostPort: 3010  # jellyfin
-      - containerPort: 30011
-        hostPort: 3011  # nextcloud
-      - containerPort: 30012
-        hostPort: 3012  # immich
-      - containerPort: 30013
-        hostPort: 3013  # it-tools
-      - containerPort: 30014
-        hostPort: 3014  # libreoffice
-      - containerPort: 30015
-        hostPort: 3015  # foldingathome
       - containerPort: 30016
         hostPort: 3016  # dozzle

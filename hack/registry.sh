@@ -11,9 +11,7 @@ docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/
 # kind-config.yaml mirrors to. Add a line when manifests use a new registry.
 for r in \
   "kind-reg-dockerio|https://registry-1.docker.io" \
-  "kind-reg-ghcr|https://ghcr.io" \
-  "kind-reg-lscr|https://lscr.io" \
-  "kind-reg-n8n|https://docker.n8n.io"; do
+  "kind-reg-ghcr|https://ghcr.io"; do
     name=${r%%|*}; upstream=${r##*|}
     if [ -z "$(docker ps -q -f "name=^${name}$")" ]; then
         echo "→ $name → $upstream"

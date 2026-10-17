@@ -34,7 +34,7 @@ run = "hack/registry.sh"
 
 [tasks.registry-clean]
 description = "Stop and remove the cache registries (cached layers in their volumes stay)"
-run = "docker rm -f kind-reg-dockerio kind-reg-ghcr kind-reg-lscr kind-reg-n8n || true"
+run = "docker rm -f kind-reg-dockerio kind-reg-ghcr || true"
 
 [tasks.deploy]
 description = "Create cluster and deploy (skips cluster creation if already exists)"

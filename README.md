@@ -11,34 +11,21 @@ All services are accessible via NodePort at the host's Tailscale [MagicDNS](http
 | Service | Port | Purpose |
 |---|---|---|
 | Homepage | [3000](http://omarchy-xps.tail53266a.ts.net:3000) | Central dashboard |
-| Grafana | 3001 | Metrics visualization |
-| Prometheus | 3002 | Metrics collection |
 | Gatus | 3003 | Service health checks |
-| Home Assistant | 3004 | Home automation |
-| Open WebUI | 3005 | Chat interface for Ollama |
-| Ollama | 3006 | Local LLM inference |
-| n8n | 3007 | Workflow automation |
 | Hermes Agent | 3008 | Autonomous AI agent |
-| Plex | 3009 | Media streaming |
-| Jellyfin | 3010 | Media streaming |
-| Nextcloud | 3011 | File storage |
-| Immich | 3012 | Photo and video management |
-| IT Tools | 3013 | Developer utilities |
-| LibreOffice | 3014 | Online office suite |
-| Folding@home | 3015 | Protein-folding research |
 | Dozzle | 3016 | Live container logs |
 
 ## What this teaches
 
 **Networking** — every service is exposed as a NodePort, a fixed port on the host that maps directly into the cluster. Understanding how a browser request reaches a pod means tracing: host port → kind node → Kubernetes Service → Pod. There's no magic, just layers.
 
-**Service discovery** — pods don't talk to each other via IPs. Open WebUI reaches Ollama at `http://ollama.ai.svc.cluster.local:80`. This is Kubernetes' internal DNS — every Service gets a stable DNS name regardless of which node its pods land on or how many times they restart.
+**Service discovery** — pods don't talk to each other via IPs. Gatus health-checks Hermes Agent at `http://hermes-agent.ai.svc.cluster.local:9119`. This is Kubernetes' internal DNS — every Service gets a stable DNS name regardless of which node its pods land on or how many times they restart.
 
 **Storage** — static PersistentVolumes back each service with a fixed hostPath (`/homelab-data/<service>`), which kind bind-mounts from `./data/` on your host. Data survives cluster destruction and recreation because it lives on the host filesystem. The PV → PVC binding flow is explicit: you can see exactly which directory backs which service.
 
 **Declarative configuration** — nothing is set up manually inside the cluster. Every resource is a YAML manifest in this repo. Deleting and recreating the entire cluster with `mise run rebuild` produces the same result every time.
 
-**Namespaces** — services are grouped into `ai`, `monitoring`, `media`, and `it` namespaces.
+**Namespaces** — services are grouped into `ai` and `monitoring` namespaces.
 
 ## Prerequisites
 
@@ -121,7 +108,7 @@ and touch these files:
 
 1. **`manifests/<namespace>/<service>.yaml`** — the workload. A `Deployment`, a
    NodePort `Service` (`nodePort: 3000N`), and a `PersistentVolumeClaim` if it
-   needs storage. Copy `manifests/science/foldingathome.yaml` as a template.
+   needs storage. Copy `manifests/ai/hermes-agent.yaml` as a template.
 
 2. **`manifests/volumes.yaml`** — if the service needs storage, add a static
    `PersistentVolume` with `hostPath: /homelab-data/<service>` matching the PVC's
@@ -168,8 +155,6 @@ homelab/
 └── manifests/
     ├── namespaces.yaml      # namespace definitions
     ├── volumes.yaml         # static PersistentVolumes backed by ./data/
-    ├── ai/                  # ollama, open-webui, n8n, hermes-agent
-    ├── monitoring/          # prometheus, grafana, gatus, homepage, home-assistant, dozzle
-    ├── media/               # plex, jellyfin, nextcloud, immich
-    └── it/                  # it-tools, libreoffice
+    ├── ai/                  # hermes-agent
+    └── monitoring/          # gatus, homepage, dozzle
 ```
