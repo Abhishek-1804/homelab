@@ -1,6 +1,6 @@
 # Dozzle in k8s mode reads pod logs through the Kubernetes API rather than a
-# Docker socket — the socket on this host only sees the kind node container and
-# the pull-through cache registries, not the pods running inside the node.
+# Docker socket. k3s runs containers with containerd, so there is no Docker
+# socket to read.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

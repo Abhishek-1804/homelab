@@ -1,6 +1,6 @@
 .claude
 TODO.md
-data/
-.helm/
-.idea/
 todo.txt
+.idea/
+.kube/
+.secrets/

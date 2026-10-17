@@ -1,13 +1,6 @@
-# Static PersistentVolumes with fixed hostPaths.
-# Each PV maps to a named subdirectory under ./data/ on the host Mac via kind's extraMounts.
-# Using static PVs means the same directory is reused on every rebuild — data survives
-# cluster destruction and recreation.
-#
-# Path inside kind node: /homelab-data/<service>
-# Path on your Mac:      ./data/<service>
-#
-# To wipe all data:             rm -rf ./data/*
-# To wipe a single service:     rm -rf ./data/<service>
+# Static PersistentVolumes with fixed hostPaths under /srv/homelab on the server.
+# Using static PVs means the same directory is reused on every rebuild: data
+# survives the cluster being deleted and recreated.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -19,7 +12,8 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /homelab-data/gatus
+    path: /srv/homelab/gatus
+    type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -32,4 +26,5 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /homelab-data/hermes-agent
+    path: /srv/homelab/hermes-agent
+    type: DirectoryOrCreate

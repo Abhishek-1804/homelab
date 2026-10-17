@@ -1,65 +1,84 @@
-# pinned CLI tools and every automation task (`mise run <task>`, `mise tasks`
-# to list). mise is the one exception to "self-contained": it installs the
-# tools into ~/.local/share/mise and puts them on PATH inside this repo
-[tools]
-kubectl  = "1.30.2"
-kind     = "0.23.0"
-yq       = "4.44.2"
-helm     = "3.17.3"
-helmfile = "0.166.0"
+# The laptop side of the homelab: tools, the server inventory, and the tasks
+# you run here (`mise tasks` to list). The servers themselves are set up by
+# `mise bootstrap remote`, which sends this repo over SSH and applies
+# mise.server.toml there.
 
-[env]
-# keep helm plugins (helm-diff) local to the repo
-HELM_DATA_HOME = "{{config_root}}/.helm"
+[tools]
+kubectl = "1.36.5"   # within one minor version of vars.k3s_version
 
 [vars]
-cluster = "homelab"
+k3s_version = "v1.36.5+k3s1"
+server      = "homelab-1"
 
-# tasks run from the repo root with the tools and env above. `depends` run in
-# parallel; `run = [{ task = ... }]` steps run in order.
+[env]
+# kubectl/k9s here talk to the cluster over Tailscale (`mise run kubeconfig`)
+KUBECONFIG = "{{config_root}}/.kube/config"
 
-[tasks.helm-plugins]
-description = "Install the helm-diff plugin (required by `helmfile apply`) into .helm/"
-quiet = true
-run = "helm plugin list | grep -q '^diff' || helm plugin install https://github.com/databus23/helm-diff --version v3.9.13"
+# --- servers ----------------------------------------------------------------
+# One block per server; `host` is its Tailscale name. Add a block to add one.
 
-[tasks.sync-manifests]
-description = "Apply manifests to an existing cluster (kustomize applies image versions)"
-run = "kubectl apply -k manifests/"
+[bootstrap.remote]
+source  = "."
+exclude = [".secrets", ".kube", ".idea"]   # never send secrets to the servers
 
-[tasks.registry]
-description = "Start the local pull-through cache registries (cache survives rebuilds)"
-quiet = true
-run = "hack/registry.sh"
+[bootstrap.remote.hosts.homelab-1]
+host     = "homelab-1"
+mise_env = ["server"]
 
-[tasks.registry-clean]
-description = "Stop and remove the cache registries (cached layers in their volumes stay)"
-run = "docker rm -f kind-reg-dockerio kind-reg-ghcr || true"
+# --- tasks ------------------------------------------------------------------
+
+[tasks.setup]
+description = "First-time setup of a fresh server over the LAN (everything except the firewall)"
+usage = '''
+arg "<name>" help="the server's name in the inventory, e.g. homelab-1"
+arg "<destination>" help="[user@]LAN-IP, used only for this first run"
+'''
+shell = "bash -euo pipefail -c"
+run = '''
+ssh -t "$usage_destination" sudo hostnamectl set-hostname "$usage_name"
+# the firewall would close the LAN SSH session this runs over; `up` applies it over Tailscale
+mise bootstrap remote --host "$usage_destination" --remote-env server --skip firewall
+'''
+
+[tasks.up]
+description = "Bring every server in line with this repo, over Tailscale (safe to re-run)"
+run = "mise bootstrap remote --all"
+
+[tasks.ping]
+description = "Check every server answers over Tailscale and SSH"
+shell = "bash -euo pipefail -c"
+run = '''
+for host in $(mise config get bootstrap.remote.hosts | yq -p toml '.[].host'); do
+    ts=$(tailscale ping -c 1 --timeout 3s "$host" >/dev/null 2>&1 && echo up || echo down)
+    ssh=$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" true 2>/dev/null && echo up || echo down)
+    printf '%-14s tailscale: %-5s ssh: %s\n' "$host" "$ts" "$ssh"
+done
+'''
+tools = { yq = "4.44.2" }
+
+[tasks.kubeconfig]
+description = "Fetch the cluster's kubeconfig so kubectl and k9s here can reach it"
+shell = "bash -euo pipefail -c"
+run = '''
+mkdir -p .kube
+ssh {{vars.server}} sudo cat /etc/rancher/k3s/k3s.yaml \
+    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.server}})/" > .kube/config
+chmod 600 .kube/config
+'''
 
 [tasks.deploy]
-description = "Create cluster and deploy (skips cluster creation if already exists)"
-depends = ["helm-plugins", "registry"]
-run = [
-    '''
-mkdir -p data
-kind get clusters | grep -q '^{{vars.cluster}}$' || \
-    DATA_DIR="$(pwd)/data" yq e '.nodes[0].extraMounts = [{"hostPath": strenv(DATA_DIR), "containerPath": "/homelab-data"}]' kind-config.yaml \
-    | kind create cluster --name {{vars.cluster}} --config -
-''',
-    { task = "sync-manifests" },
-]
-
-[tasks.destroy]
-description = "Destroy kind cluster"
-run = "kind delete cluster --name {{vars.cluster}}"
-
-[tasks.rebuild]
-description = "Destroy and recreate cluster from scratch"
-run = [{ task = "destroy" }, { task = "deploy" }]
-
-[tasks.clean-data]
-description = "Delete all service data (files are owned by container users, hence sudo)"
-run = "sudo rm -rf data/"
+description = "Create Hermes' secret from .secrets/hermes.env and apply every manifest"
+depends = ["kubeconfig"]
+shell = "bash -euo pipefail -c"
+run = '''
+kubectl apply -f manifests/namespaces.yaml
+# .secrets/hermes.env is mounted by the 1Password desktop app (see README)
+kubectl -n ai create secret generic hermes-env --from-env-file=.secrets/hermes.env \
+    --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -k manifests/
+# env vars are read at container start, so pick up any secret changes
+kubectl -n ai rollout restart deploy/hermes-agent
+'''
 
 # --- global docker cleanup (affects ALL docker, not just homelab) ---
 

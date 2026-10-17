@@ -13,16 +13,16 @@ data:
   services.yaml: |
     - Monitoring:
         - Gatus:
-            href: http://omarchy-xps.tail53266a.ts.net:3003
+            href: http://homelab-1.tail53266a.ts.net:30003
             description: Service health checks
             icon: gatus.png
         - Dozzle:
-            href: http://omarchy-xps.tail53266a.ts.net:3016
+            href: http://homelab-1.tail53266a.ts.net:30016
             description: Live container logs
             icon: dozzle.png
     - AI:
         - Hermes Agent:
-            href: http://omarchy-xps.tail53266a.ts.net:3008
+            href: http://homelab-1.tail53266a.ts.net:30008
             description: Autonomous AI agent
             icon: https://avatars.githubusercontent.com/u/103061224
 

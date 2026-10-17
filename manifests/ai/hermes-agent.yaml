@@ -27,6 +27,9 @@ spec:
       labels:
         app: hermes-agent
     spec:
+      # Hermes has no business talking to the Kubernetes API; without this
+      # it gets a token that could read the cluster.
+      automountServiceAccountToken: false
       containers:
         - name: hermes-agent
           image: nousresearch/hermes-agent:latest
@@ -36,6 +39,10 @@ spec:
             - |
               hermes gateway start &
               hermes dashboard --host 0.0.0.0 --port 9119 --insecure
+          # one env var per line of .secrets/hermes.env (`mise run deploy`)
+          envFrom:
+            - secretRef:
+                name: hermes-env
           stdin: true
           tty: true
           ports:

@@ -1,0 +1,119 @@
+# Everything on a server. Applied by `mise run setup` the first time and
+# `mise run up` after that; re-running only changes what differs.
+
+# --- packages ---------------------------------------------------------------
+# mise skips entries for package managers a server doesn't have, so a server
+# on another distro just adds its lines here (e.g. "apt:tailscale").
+
+[bootstrap.packages]
+"pacman:openssh"   = "latest"
+"pacman:tailscale" = "latest"
+"pacman:ufw"       = "latest"
+
+[bootstrap.services.sshd]
+on_change = "reload"
+
+[bootstrap.services.tailscaled]
+
+[bootstrap.services.ufw]
+
+# --- SSH: keys only ---------------------------------------------------------
+
+[bootstrap.files."/etc/ssh/sshd_config.d/90-homelab.conf"]
+notify  = ["sshd"]
+content = """
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+"""
+
+# --- firewall: nothing gets in except over Tailscale ------------------------
+# `exclusive` replaces Omarchy's default rules (e.g. LocalSend's open ports).
+
+[bootstrap.linux.firewall]
+backend          = "ufw"
+exclusive        = true
+default_incoming = "deny"
+default_outgoing = "allow"
+
+[[bootstrap.linux.firewall.rules]]
+name     = "ssh-tailnet"
+port     = 22
+protocol = "tcp"
+source   = "100.64.0.0/10"   # Tailscale addresses
+
+[[bootstrap.linux.firewall.rules]]
+name      = "tailnet"         # the k3s API and NodePorts
+interface = "tailscale0"
+
+[[bootstrap.linux.firewall.rules]]
+name   = "k3s-pods"
+source = "10.42.0.0/16"
+
+[[bootstrap.linux.firewall.rules]]
+name   = "k3s-services"
+source = "10.43.0.0/16"
+
+# --- stay awake: it's a laptop acting as a server ---------------------------
+
+[bootstrap.directories."/etc/systemd/logind.conf.d"]
+
+[bootstrap.files."/etc/systemd/logind.conf.d/90-homelab.conf"]
+content = """
+[Login]
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+"""
+
+[bootstrap.directories."/etc/systemd/sleep.conf.d"]
+
+[bootstrap.files."/etc/systemd/sleep.conf.d/90-homelab.conf"]
+content = """
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowSuspendThenHibernate=no
+AllowHybridSleep=no
+"""
+
+# --- k3s --------------------------------------------------------------------
+
+[bootstrap.directories."/etc/rancher/k3s"]
+
+[bootstrap.files."/etc/rancher/k3s/config.yaml"]
+content = """
+# Each key is a `k3s server` flag: https://docs.k3s.io/cli/server
+secrets-encryption: true
+disable:
+  - traefik            # services are reached by NodePort; no ingress needed yet
+kube-proxy-arg:
+  - nodeport-addresses=100.64.0.0/10   # NodePorts answer only on the Tailscale address
+"""
+
+# NodePorts bind to the Tailscale address, so start k3s after Tailscale
+[bootstrap.directories."/etc/systemd/system/k3s.service.d"]
+
+[bootstrap.files."/etc/systemd/system/k3s.service.d/after-tailscale.conf"]
+content = """
+[Unit]
+Wants=tailscaled.service
+After=tailscaled.service
+"""
+
+# `mise bootstrap` runs this last
+[tasks.bootstrap]
+description = "Log in to Tailscale (first run only), then install or upgrade k3s"
+shell = "bash -euo pipefail -c"
+run = '''
+# prints a login URL to open on any device
+tailscale status >/dev/null 2>&1 || sudo tailscale up
+
+# apply the lid-switch setting now, not at next boot
+sudo systemctl reload systemd-logind
+
+if [ "$(k3s --version 2>/dev/null | awk 'NR==1 {print $3}')" != "{{vars.k3s_version}}" ]; then
+    curl -sfL https://get.k3s.io \
+        | sudo INSTALL_K3S_VERSION="{{vars.k3s_version}}" sh -s - --node-ip "$(tailscale ip -4)"
+fi
+'''
