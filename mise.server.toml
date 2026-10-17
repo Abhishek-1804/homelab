@@ -1,16 +1,22 @@
 # Everything on a server. Applied by `mise run setup` the first time and
 # `mise run up` after that; re-running only changes what differs.
 
-# --- packages ---------------------------------------------------------------
-# mise skips entries for package managers a server doesn't have, so a server
-# on another distro just adds its lines here (e.g. "apt:tailscale").
+# --- packages (Ubuntu Server) ----------------------------------------------
+
+# Tailscale isn't in Ubuntu's repos; this adds Tailscale's own. The suite
+# (noble, resolute, ...) follows the server's release automatically.
+[bootstrap.apt.sources.tailscale]
+uris        = "https://pkgs.tailscale.com/stable/ubuntu"
+key         = "https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg"
+fingerprint = "2596 A99E AAB3 3821 893C 0A79 458C A832 957F 5868"
 
 [bootstrap.packages]
-"pacman:openssh"   = "latest"
-"pacman:tailscale" = "latest"
-"pacman:ufw"       = "latest"
+"apt:openssh-server"      = "latest"
+"apt:tailscale"           = "latest"
+"apt:ufw"                 = "latest"
+"apt:unattended-upgrades" = "latest"   # automatic security updates
 
-[bootstrap.services.sshd]
+[bootstrap.services.ssh]
 on_change = "reload"
 
 [bootstrap.services.tailscaled]
@@ -20,7 +26,7 @@ on_change = "reload"
 # --- SSH: keys only ---------------------------------------------------------
 
 [bootstrap.files."/etc/ssh/sshd_config.d/90-homelab.conf"]
-notify  = ["sshd"]
+notify  = ["ssh"]
 content = """
 PasswordAuthentication no
 KbdInteractiveAuthentication no

@@ -39,10 +39,10 @@ spec:
             - |
               hermes gateway start &
               hermes dashboard --host 0.0.0.0 --port 9119 --insecure
-          # one env var per line of .secrets/hermes.env (`mise run deploy`)
+          # one env var per line of .env (`mise run deploy`)
           envFrom:
             - secretRef:
-                name: hermes-env
+                name: homelab-env
           stdin: true
           tty: true
           ports:

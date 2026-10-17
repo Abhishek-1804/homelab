@@ -3,4 +3,9 @@ TODO.md
 todo.txt
 .idea/
 .kube/
-.secrets/
+.env
+.env.local
+# terraform state can hold secrets, and this repo is public
+tf/.terraform/
+tf/*.tfstate*
+tf/*.tfvars

@@ -8,21 +8,48 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 | `mise.toml` | Laptop: tools, the server inventory, tasks |
 | `mise.server.toml` | Everything on a server: packages, SSH, firewall, k3s |
 | `manifests/` | What runs in the cluster |
+| `tf/` | Throwaway EC2 servers for testing the setup flow |
 
-## Servers
+## Requirements
 
-Servers are listed in `mise.toml`. To add one, add a block:
+### Accounts
 
-```toml
-[bootstrap.remote.hosts.homelab-2]
-host     = "homelab-2"      # its Tailscale name
-mise_env = ["server"]
-```
+| Account | Used for |
+|---|---|
+| GitHub | This repo; servers import your SSH key from it |
+| Tailscale | The private network you reach the servers through |
+| 1Password | Every secret (the `homelab` Environment) |
+| AWS | Test servers in `tf/` only, through SSO (no stored keys) |
+
+### On the laptop
+
+Install these yourself:
+
+| Tool | Why |
+|---|---|
+| [mise](https://mise.jdx.dev) | Runs every task and installs the tools below |
+| Tailscale | Reaches the servers after setup |
+| An SSH key, also added to GitHub | Logging in to the servers |
+| 1Password desktop app | Mounts the secrets as `.env` (Developer → Environments) |
+| AWS CLI | `aws sso login` before using `tf/` |
+
+mise installs the rest at the versions pinned in `mise.toml`: `kubectl` and
+`terraform` with `mise install`, and `yq` the first time `mise run ping` runs.
+
+### On a server
+
+The only manual step is installing **Ubuntu Server** (24.04 or 26.04 LTS) with
+two things working:
+
+- **Wi-Fi:** connected, so the server has a LAN IP and internet.
+- **SSH:** `openssh-server` running, with your key authorized
+  (`ssh-import-id gh:<github-user>`), so `ssh <user>@<lan-ip>` works without a password.
+
+Everything else is code. `mise.server.toml` installs `openssh-server`,
+`tailscale`, `ufw` and `unattended-upgrades`, and then k3s at the version
+pinned in `mise.toml`.
 
 ## Setting up a server
-
-On the fresh server (Omarchy), once, at its own keyboard:
-`sudo systemctl enable --now sshd`, then copy your SSH key to it.
 
 From the laptop:
 
@@ -32,29 +59,69 @@ mise run up                                       # over Tailscale; turns the fi
 mise run deploy                                   # secrets + apps
 ```
 
-`setup` installs the packages, sets SSH to keys only, keeps the laptop awake
-with the lid closed, logs in to Tailscale and installs k3s. `up` repeats all of
-that over Tailscale and adds the firewall. After that, **the server is
-reachable only over Tailscale.** Run `mise run up` any time to re-apply.
+`setup` sets the hostname, installs the packages, sets SSH to keys only, keeps
+the laptop awake with the lid closed, logs in to Tailscale and installs k3s.
+`up` repeats all of that over Tailscale and adds the firewall. After that,
+**the server is reachable only over Tailscale.** Run `mise run up` any time to
+re-apply.
 
 | Task | Does |
 |---|---|
 | `mise run ping` | Every server: up or down, over Tailscale and SSH |
 | `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the cluster |
 
+To add a server, add a block to `mise.toml`:
+
+```toml
+[bootstrap.remote.hosts.homelab-2]
+host     = "homelab-2"      # its Tailscale name
+mise_env = ["server"]
+```
+
 ## Secrets
 
-Hermes' secrets live in a **1Password Environment**. The desktop app mounts it
-as a file at `.secrets/hermes.env`, which is gitignored and never sent to the
-servers. `mise run deploy` turns it into the `hermes-env` Kubernetes Secret, and
-each line becomes an env var in the Hermes pod.
+All secrets live in one **1Password Environment**, `homelab`. The desktop app
+mounts it as `.env` in this repo, which is gitignored and never sent to the
+servers. `mise run deploy` loads it into the `homelab-env` Kubernetes Secret,
+which k3s stores encrypted. Hermes gets each line as an env var.
 
-To set it up in 1Password: open **Developer → Environments**, create an
-environment, and add the variables (e.g. `CLAUDE_CODE_OAUTH_TOKEN`). Then add
-the destination **Local .env file** with the path `.secrets/hermes.env` in this
-repo.
+**Any pod given this Secret sees every value in it**, so only put in secrets
+its users may all see. Today that's just Hermes. That's also why AWS access
+doesn't go here (see below).
 
-To change a secret, edit it in 1Password and run `mise run deploy`.
+To set it up in 1Password: open **Developer → Environments**, create `homelab`,
+and add the variables (e.g. `CLAUDE_CODE_OAUTH_TOKEN`). Then add the
+destination **Local .env file** with the path `.env` in this repo.
+
+| Task | Does |
+|---|---|
+| `mise run deploy` | Pushes the current secrets to the cluster (after any change in 1Password) |
+| `mise run env-local` | Writes `.env.local`: the variable names in `.env`, without values |
+
+## Test servers on AWS (`tf/`)
+
+`tf/` creates throwaway EC2 instances to try the setup flow on a fresh machine.
+Later it will be used for CI as well.
+
+**Logging in** uses AWS IAM Identity Center (SSO): you sign in through the
+browser and get credentials that expire after a few hours. No AWS keys are
+stored anywhere. Set it up once with:
+
+```bash
+aws configure sso                  # name the profile "homelab"
+```
+
+Then, each session:
+
+```bash
+aws sso login --profile homelab    # mise.toml sets AWS_PROFILE=homelab for this repo
+mise run tf-destroy                # when done: deletes everything tf/ created
+```
+
+**Terraform state** is `tf/terraform.tfstate` on the laptop (gitignored). It is
+the only record of what exists in AWS, so run `mise run tf-destroy` before you
+ever delete it. Test servers that logged in to Tailscale also need removing
+from the Tailscale admin console.
 
 ## Services
 
@@ -67,7 +134,7 @@ To change a secret, edit it in 1Password and run `mise run deploy`.
 
 ## Good to know
 
-- **Disk encryption:** Omarchy encrypts the disk, so after a reboot the server
-  waits for the passphrase at its own keyboard.
+- **Disk encryption:** if you encrypt the disk in the installer, the server
+  waits at its own keyboard for the passphrase after every reboot.
 - **No backups:** data under `/srv/homelab` on the server is **not backed up**,
   so keep the `hermes-backups` repo for now.
