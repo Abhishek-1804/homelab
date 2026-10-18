@@ -9,6 +9,12 @@ variable "instance_type" {
   default     = "t3.small"
 }
 
+variable "disk_size" {
+  description = "GiB; the default 8 leaves too little room for container images"
+  type        = number
+  default     = 20
+}
+
 variable "username" {
   description = "The login user, the same as on the real server"
   type        = string

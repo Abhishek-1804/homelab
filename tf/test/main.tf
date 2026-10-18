@@ -1,4 +1,5 @@
-# A throwaway Ubuntu 26.04 server for testing the setup flow.
+# A throwaway Ubuntu 26.04 server for testing the setup flow:
+# `mise run tf test apply`, then `mise run setup --test homelab-1 abhishek@<ip>`.
 
 # Canonical publishes the current Ubuntu image ID here
 data "aws_ssm_parameter" "ubuntu" {
@@ -14,6 +15,13 @@ resource "aws_security_group" "ssh" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  # direct Tailscale connections instead of relays, as on the real server
+  ingress {
+    from_port   = 41641
+    to_port     = 41641
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -26,6 +34,9 @@ resource "aws_instance" "test" {
   ami                    = data.aws_ssm_parameter.ubuntu.insecure_value
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.ssh.id]
+  root_block_device {
+    volume_size = var.disk_size
+  }
   # first boot: the same user as on the real server, with the GitHub SSH keys
   user_data = <<-EOT
     #cloud-config

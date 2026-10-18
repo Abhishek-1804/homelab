@@ -6,6 +6,6 @@ todo.txt
 .env
 .env.local
 # terraform state can hold secrets, and this repo is public
-tf/.terraform/
-tf/*.tfstate*
-tf/*.tfvars
+tf/**/.terraform/
+tf/**/*.tfstate*
+tf/**/*.tfvars

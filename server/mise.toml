@@ -37,7 +37,7 @@ KbdInteractiveAuthentication no
 PermitRootLogin no
 """
 
-# --- firewall: nothing gets in except over Tailscale ------------------------
+# --- firewall: nothing gets in except over Tailscale (and Tailscale itself) --
 # `exclusive` removes any ufw rule not listed here, so the list is the whole truth.
 
 [bootstrap.linux.firewall]
@@ -51,6 +51,11 @@ name     = "ssh-tailnet"
 port     = 22
 protocol = "tcp"
 source   = "100.64.0.0/10"   # Tailscale addresses
+
+[[bootstrap.linux.firewall.rules]]
+name     = "tailscale-direct"   # Tailscale's own port: direct connections instead of relays
+port     = 41641
+protocol = "udp"
 
 [[bootstrap.linux.firewall.rules]]
 name      = "tailnet"         # the k3s API and NodePorts
@@ -119,7 +124,8 @@ run = '''
 if tailscale status >/dev/null 2>&1; then
     echo "✓ Tailscale: already logged in"
 else
-    echo "→ Tailscale: open the URL below on any device to add this server"
+    # `mise run setup` joins with a key before this; this is the manual fallback
+    echo "→ Tailscale: not logged in; open the URL below on any device to add this server"
     sudo tailscale up
 fi
 echo "✓ Tailscale: $(hostname) is $(tailscale ip -4)"

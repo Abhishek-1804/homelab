@@ -33,28 +33,37 @@ description = "First-time setup of a fresh server over the LAN (everything excep
 usage = '''
 arg "<name>" help="the server's name in the inventory, e.g. homelab-1"
 arg "<destination>" help="[user@]LAN-IP, used only for this first run"
+flag "--test" help="an EC2 test server: joins Tailscale as ephemeral, so it disappears once offline"
 '''
 shell = "bash -euo pipefail -c"
 run = '''
 step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
 # --host targets ignore the inventory, so name the source and mise install here.
-# -q hides mise's internal ssh commands; errors still show.
+# -q hides mise's internal ssh commands; errors still show. --yes: no prompts.
 remote() {
-    mise -q bootstrap remote --host "$usage_destination" --source server \
+    mise -q bootstrap remote --yes --host "$usage_destination" --source server \
         --bootstrap-command "curl -fsSL https://mise.run | sh" "$@"
 }
 
-step 1/4 "Hostname: $usage_name"
+step 1/5 "Hostname: $usage_name"
 ssh -t "$usage_destination" sudo hostnamectl set-hostname "$usage_name"
 
-step 2/4 "Packages: openssh-server, tailscale, ufw, unattended-upgrades"
+step 2/5 "Packages: openssh-server, tailscale, ufw, unattended-upgrades"
 remote --only packages --update
 
 # together, so a changed SSH config reloads ssh
-step 3/4 "Config files and services: SSH keys only, no sleep, k3s config"
+step 3/5 "Config files and services: SSH keys only, no sleep, k3s config"
 remote --only files,services
 
-step 4/4 "Tailscale login and k3s"
+step 4/5 "Tailscale: joining as tag:homelab"
+# the join key is made by tf/infra; it goes through a private file, not the command line
+key=tailscale_server_key
+[ "${usage_test:-false}" = true ] && key=tailscale_test_key
+terraform -chdir=tf/infra output -raw "$key" | ssh "$usage_destination" 'umask 077; cat > ~/.tskey'
+ssh -t "$usage_destination" 'tailscale status >/dev/null 2>&1 \
+    || sudo tailscale up --auth-key="file:$HOME/.tskey"; s=$?; rm -f ~/.tskey; exit $s'
+
+step 5/5 "k3s"
 remote --only task
 
 # the firewall would close the LAN SSH session this ran over
@@ -63,7 +72,7 @@ printf '\nDone. Next: mise run up (over Tailscale; turns on the firewall)\n'
 
 [tasks.up]
 description = "Bring every server in line with this repo, over Tailscale (safe to re-run)"
-run = "mise bootstrap remote --all --update"   # --update: apt update first
+run = "mise bootstrap remote --all --update --yes"   # --update: apt update first; --yes: no prompts
 
 [tasks.ping]
 description = "Check every server answers over Tailscale and SSH"
@@ -87,31 +96,35 @@ ssh {{vars.server}} sudo cat /etc/rancher/k3s/k3s.yaml \
 chmod 600 .kube/config
 '''
 
-# --- test servers on AWS (tf/) ---
+[tasks.k9s]
+description = "Open k9s on the cluster (fetches the kubeconfig first)"
+depends = ["kubeconfig"]
+raw = true   # k9s is full-screen, so give it the terminal directly
+run = "k9s"
+tools = { k9s = "0.51.0" }
+
+# --- terraform (tf/) ---
 
 [tasks.tf-login]
 description = "Sign in to AWS in the browser as the akdp IAM user (short-lived credentials)"
 run = "aws login"
 
-[tasks.tf-init]
-description = "Download the Terraform providers tf/ needs"
-dir = "{{config_root}}/tf"
-run = "terraform init"
-
-[tasks.tf-plan]
-description = "Show what tf-apply would change in AWS"
-dir = "{{config_root}}/tf"
-run = "terraform plan"
-
-[tasks.tf-apply]
-description = "Create the EC2 test server (asks for confirmation)"
-dir = "{{config_root}}/tf"
-run = "terraform apply"
-
-[tasks.tf-destroy]
-description = "Destroy every AWS resource tf/ created (asks for confirmation)"
-dir = "{{config_root}}/tf"
-run = "terraform destroy"
+[tasks.tf]
+description = "Run terraform in tf/<stack>, e.g. `mise run tf infra plan`"
+usage = '''
+arg "<stack>" help="state: the S3 bucket for state; infra: budget and Tailscale; test: EC2 test server" {
+  choices "state" "infra" "test"
+}
+arg "<command>" help="init, plan, apply, destroy, output, ..."
+arg "[args]" var=#true help="passed on to terraform"
+'''
+shell = "bash -euo pipefail -c"
+run = '''
+# tf/infra needs the Tailscale OAuth client from .env; nothing else in it
+if [ "$usage_stack" = infra ]; then set -a; . <(grep '^TAILSCALE_' .env); set +a; fi
+# usage passes [args] shell-quoted, so eval splits them back into words
+eval "terraform -chdir=tf/$usage_stack $usage_command ${usage_args:-}"
+'''
 
 [tasks.env-local]
 description = "Regenerate .env.local from the mounted .env: variable names only, never values"
@@ -127,8 +140,9 @@ depends = ["kubeconfig"]
 shell = "bash -euo pipefail -c"
 run = '''
 kubectl apply -f manifests/namespaces.yaml
-# .env is mounted by the 1Password desktop app (see README)
-kubectl -n ai create secret generic homelab-env --from-env-file=.env \
+# .env is mounted by the 1Password desktop app (see README). TAILSCALE_* is
+# Terraform's admin access to the tailnet, so it stays out of the cluster.
+kubectl -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
     --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -k manifests/
 # env vars are read at container start, so pick up any secret changes
