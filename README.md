@@ -19,7 +19,7 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 | GitHub | This repo; servers import your SSH key from it |
 | Tailscale | The private network you reach the servers through |
 | 1Password | Every secret (the `homelab` Environment) |
-| AWS | Test servers in `tf/` only, through SSO (no stored keys) |
+| AWS | Test servers in `tf/` only, through `aws login` (no stored keys) |
 
 ### On the laptop
 
@@ -31,7 +31,7 @@ Install these yourself:
 | Tailscale | Reaches the servers after setup |
 | An SSH key, also added to GitHub | Logging in to the servers |
 | 1Password desktop app | Mounts the secrets as `.env` (Developer → Environments) |
-| AWS CLI | `aws sso login` before using `tf/` |
+| AWS CLI | Signs in to AWS before using `tf/` |
 
 mise installs the rest at the versions pinned in `mise.toml`: `kubectl` and
 `terraform` with `mise install`, and `yq` the first time `mise run ping` runs.
@@ -103,20 +103,29 @@ destination **Local .env file** with the path `.env` in this repo.
 `tf/` creates throwaway EC2 instances to try the setup flow on a fresh machine.
 Later it will be used for CI as well.
 
-**Logging in** uses AWS IAM Identity Center (SSO): you sign in through the
-browser and get credentials that expire after a few hours. No AWS keys are
-stored anywhere. Set it up once with:
+**Logging in** uses `aws login`: you sign in through the browser as an IAM
+user and the CLI gets short-lived credentials. No AWS keys are stored
+anywhere, and the root user is kept for billing only. Set it up once:
 
-```bash
-aws configure sso                  # name the profile "homelab"
-```
+1. As root, in **IAM** → **Users**, create `akdp` with console access and the
+   `PowerUserAccess` policy (everything except IAM). Sign in as it with
+   your account ID and add MFA.
+2. `mise run tf-login` and sign in as `akdp`. That saves the `homelab`
+   profile in `~/.aws/config` (`mise.toml` sets `AWS_PROFILE=homelab` for
+   this repo).
 
 Then, each session:
 
-```bash
-aws sso login --profile homelab    # mise.toml sets AWS_PROFILE=homelab for this repo
-mise run tf-destroy                # when done: deletes everything tf/ created
-```
+| Task | Does |
+|---|---|
+| `mise run tf-login` | Signs in to AWS (`aws login`) when the credentials expire |
+| `mise run tf-init` | Downloads the providers (once) |
+| `mise run tf-plan` | Shows what would be created |
+| `mise run tf-apply` | Creates a `t3.small` Ubuntu 26.04 server (about $0.025/hour) and prints `ssh ubuntu@<ip>` |
+| `mise run tf-destroy` | **When done:** deletes everything `tf/` created |
+
+The server lets in your GitHub SSH keys (key import can take a minute after
+boot). Settings such as the instance type are in `tf/vars.tf`.
 
 **Terraform state** is `tf/terraform.tfstate` on the laptop (gitignored). It is
 the only record of what exists in AWS, so run `mise run tf-destroy` before you

@@ -14,7 +14,7 @@ server      = "homelab-1"
 [env]
 # kubectl/k9s here talk to the cluster over Tailscale (`mise run kubeconfig`)
 KUBECONFIG = "{{config_root}}/.kube/config"
-# terraform in tf/ uses this SSO profile (`aws sso login --profile homelab`)
+# terraform in tf/ uses this profile (`mise run tf-login`)
 AWS_PROFILE = "homelab"
 
 # --- servers ----------------------------------------------------------------
@@ -69,9 +69,31 @@ ssh {{vars.server}} sudo cat /etc/rancher/k3s/k3s.yaml \
 chmod 600 .kube/config
 '''
 
+# --- test servers on AWS (tf/) ---
+
+[tasks.tf-login]
+description = "Sign in to AWS in the browser as the akdp IAM user (short-lived credentials)"
+run = "aws login"
+
+[tasks.tf-init]
+description = "Download the Terraform providers tf/ needs"
+dir = "{{config_root}}/tf"
+run = "terraform init"
+
+[tasks.tf-plan]
+description = "Show what tf-apply would change in AWS"
+dir = "{{config_root}}/tf"
+run = "terraform plan"
+
+[tasks.tf-apply]
+description = "Create the EC2 test server (asks for confirmation)"
+dir = "{{config_root}}/tf"
+run = "terraform apply"
+
 [tasks.tf-destroy]
 description = "Destroy every AWS resource tf/ created (asks for confirmation)"
-run = "terraform -chdir=tf destroy"
+dir = "{{config_root}}/tf"
+run = "terraform destroy"
 
 [tasks.env-local]
 description = "Regenerate .env.local from the mounted .env: variable names only, never values"
