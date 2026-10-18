@@ -1,5 +1,9 @@
-# Everything on a server. Applied by `mise run setup` the first time and
-# `mise run up` after that; re-running only changes what differs.
+# Everything on a server. This folder is all that gets sent to it: applied by
+# `mise run setup` the first time and `mise run up` after that; re-running
+# only changes what differs.
+
+[vars]
+k3s_version = "v1.36.5+k3s1"   # keep kubectl in ../mise.toml within one minor version
 
 # --- packages (Ubuntu Server) ----------------------------------------------
 
@@ -34,7 +38,7 @@ PermitRootLogin no
 """
 
 # --- firewall: nothing gets in except over Tailscale ------------------------
-# `exclusive` replaces Omarchy's default rules (e.g. LocalSend's open ports).
+# `exclusive` removes any ufw rule not listed here, so the list is the whole truth.
 
 [bootstrap.linux.firewall]
 backend          = "ufw"
@@ -112,14 +116,25 @@ After=tailscaled.service
 description = "Log in to Tailscale (first run only), then install or upgrade k3s"
 shell = "bash -euo pipefail -c"
 run = '''
-# prints a login URL to open on any device
-tailscale status >/dev/null 2>&1 || sudo tailscale up
+if tailscale status >/dev/null 2>&1; then
+    echo "✓ Tailscale: already logged in"
+else
+    echo "→ Tailscale: open the URL below on any device to add this server"
+    sudo tailscale up
+fi
+echo "✓ Tailscale: $(hostname) is $(tailscale ip -4)"
 
 # apply the lid-switch setting now, not at next boot
 sudo systemctl reload systemd-logind
+echo "✓ Closing the lid no longer sleeps"
 
-if [ "$(k3s --version 2>/dev/null | awk 'NR==1 {print $3}')" != "{{vars.k3s_version}}" ]; then
+installed=$(k3s --version 2>/dev/null | awk 'NR==1 {print $3}' || true)
+if [ "$installed" = "{{vars.k3s_version}}" ]; then
+    echo "✓ k3s: already {{vars.k3s_version}}"
+else
+    echo "→ k3s: installing {{vars.k3s_version}} (was: ${installed:-none})"
     curl -sfL https://get.k3s.io \
         | sudo INSTALL_K3S_VERSION="{{vars.k3s_version}}" sh -s - --node-ip "$(tailscale ip -4)"
+    echo "✓ k3s: {{vars.k3s_version}} running"
 fi
 '''

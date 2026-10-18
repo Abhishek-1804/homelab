@@ -1,15 +1,14 @@
 # The laptop side of the homelab: tools, the server inventory, and the tasks
 # you run here (`mise tasks` to list). The servers themselves are set up by
-# `mise bootstrap remote`, which sends this repo over SSH and applies
-# mise.server.toml there.
+# `mise bootstrap remote`, which sends only server/ over SSH and applies
+# server/mise.toml there.
 
 [tools]
-kubectl   = "1.36.5"   # within one minor version of vars.k3s_version
+kubectl   = "1.36.5"   # within one minor version of k3s_version in server/mise.toml
 terraform = "1.16.5"   # tf/: throwaway EC2 servers for testing the bootstrap flow
 
 [vars]
-k3s_version = "v1.36.5+k3s1"
-server      = "homelab-1"
+server = "homelab-1"
 
 [env]
 # kubectl/k9s here talk to the cluster over Tailscale (`mise run kubeconfig`)
@@ -21,12 +20,11 @@ AWS_PROFILE = "homelab"
 # One block per server; `host` is its Tailscale name. Add a block to add one.
 
 [bootstrap.remote]
-source  = "."
-exclude = [".env", ".env.local", ".kube", ".idea", "tf"]   # never send secrets or tf state to the servers
+source = "server"   # only this folder is sent; secrets and tf state never leave the laptop
 
 [bootstrap.remote.hosts.homelab-1]
-host     = "homelab-1"
-mise_env = ["server"]
+host              = "homelab-1"
+bootstrap_command = "curl -fsSL https://mise.run | sh"   # the server downloads mise; uploading it is slow
 
 # --- tasks ------------------------------------------------------------------
 
@@ -38,14 +36,34 @@ arg "<destination>" help="[user@]LAN-IP, used only for this first run"
 '''
 shell = "bash -euo pipefail -c"
 run = '''
+step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
+# --host targets ignore the inventory, so name the source and mise install here.
+# -q hides mise's internal ssh commands; errors still show.
+remote() {
+    mise -q bootstrap remote --host "$usage_destination" --source server \
+        --bootstrap-command "curl -fsSL https://mise.run | sh" "$@"
+}
+
+step 1/4 "Hostname: $usage_name"
 ssh -t "$usage_destination" sudo hostnamectl set-hostname "$usage_name"
-# the firewall would close the LAN SSH session this runs over; `up` applies it over Tailscale
-mise bootstrap remote --host "$usage_destination" --remote-env server --skip firewall
+
+step 2/4 "Packages: openssh-server, tailscale, ufw, unattended-upgrades"
+remote --only packages --update
+
+# together, so a changed SSH config reloads ssh
+step 3/4 "Config files and services: SSH keys only, no sleep, k3s config"
+remote --only files,services
+
+step 4/4 "Tailscale login and k3s"
+remote --only task
+
+# the firewall would close the LAN SSH session this ran over
+printf '\nDone. Next: mise run up (over Tailscale; turns on the firewall)\n'
 '''
 
 [tasks.up]
 description = "Bring every server in line with this repo, over Tailscale (safe to re-run)"
-run = "mise bootstrap remote --all"
+run = "mise bootstrap remote --all --update"   # --update: apt update first
 
 [tasks.ping]
 description = "Check every server answers over Tailscale and SSH"

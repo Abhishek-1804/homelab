@@ -6,7 +6,7 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 | File | What it is |
 |---|---|
 | `mise.toml` | Laptop: tools, the server inventory, tasks |
-| `mise.server.toml` | Everything on a server: packages, SSH, firewall, k3s |
+| `server/mise.toml` | Everything on a server: packages, SSH, firewall, k3s. `server/` is the only folder sent to servers |
 | `manifests/` | What runs in the cluster |
 | `tf/` | Throwaway EC2 servers for testing the setup flow |
 
@@ -54,9 +54,9 @@ two things working:
 - **SSH:** `openssh-server` running, with your key authorized
   (`ssh-import-id gh:<github-user>`), so `ssh <user>@<lan-ip>` works without a password.
 
-Everything else is code. `mise.server.toml` installs `openssh-server`,
+Everything else is code. `server/mise.toml` installs `openssh-server`,
 `tailscale`, `ufw` and `unattended-upgrades`, and then k3s at the version
-pinned in `mise.toml`.
+pinned there.
 
 ## Setting up a server
 
@@ -83,8 +83,7 @@ To add a server, add a block to `mise.toml`:
 
 ```toml
 [bootstrap.remote.hosts.homelab-2]
-host     = "homelab-2"      # its Tailscale name
-mise_env = ["server"]
+host = "homelab-2"      # its Tailscale name
 ```
 
 ## Secrets

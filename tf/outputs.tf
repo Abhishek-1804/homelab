@@ -1,3 +1,3 @@
 output "ssh" {
-  value = "ssh ubuntu@${aws_instance.test.public_ip}"
+  value = "ssh ${var.username}@${aws_instance.test.public_ip}"
 }
