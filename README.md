@@ -29,12 +29,21 @@ Install these yourself:
 |---|---|
 | [mise](https://mise.jdx.dev) | Runs every task and installs the tools below |
 | Tailscale | Reaches the servers after setup |
-| An SSH key, also added to GitHub | Logging in to the servers |
-| 1Password desktop app | Mounts the secrets as `.env` (Developer → Environments) |
+| An SSH key, also added to GitHub | Logging in to the servers. Kept in 1Password: Settings → Developer → **Use the SSH agent**, and `IdentityAgent ~/.1password/agent.sock` in `~/.ssh/config` |
+| 1Password desktop app | Mounts the secrets as `.env` (Developer → Environments) and holds the SSH key |
 | AWS CLI | Signs in to AWS before using `tf/` |
 
 mise installs the rest at the versions pinned in `mise.toml`: `kubectl` and
 `terraform` with `mise install`, and `yq` the first time `mise run ping` runs.
+
+### Before running tasks
+
+| Check | Needed for | How |
+|---|---|---|
+| Your SSH key is on GitHub | Every server: they authorize the keys at `github.com/<github-user>.keys` | GitHub → Settings → SSH keys. `tf/vars.tf` sets `github_user` |
+| Tailscale is connected | `up`, `ping`, `kubeconfig`, `deploy` | `tailscale status` |
+| 1Password is unlocked | `deploy` (it reads `.env`) | Open the desktop app |
+| Signed in to AWS | `tf-plan`, `tf-apply`, `tf-destroy` | `mise run tf-login`; check with `aws sts get-caller-identity` |
 
 ### On a server
 
