@@ -53,8 +53,12 @@ The only manual step is installing **Ubuntu Server** (24.04 or 26.04 LTS) with
 two things working:
 
 - **Wi-Fi:** connected, so the server has a LAN IP and internet.
-- **SSH:** `openssh-server` running, with your key authorized
-  (`ssh-import-id gh:<github-user>`), so `ssh <user>@<lan-ip>` works without a password.
+- **SSH:** `openssh-server` running, with your key authorized, so
+  `ssh <user>@<lan-ip>` works without a password. Either tick **Import SSH
+  identity → from GitHub** in the installer, or run this on the server:
+  ```bash
+  ssh-import-id gh:<github-user>   # adds the keys on your GitHub account
+  ```
 
 Everything else is code. `server/mise.toml` installs `openssh-server`,
 `tailscale`, `ufw` and `unattended-upgrades`, and then k3s at the version
