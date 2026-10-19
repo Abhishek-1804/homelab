@@ -146,11 +146,6 @@ run = '''
 } > .env.local
 '''
 
-[tasks.deploy]
-description = "Load .env into the homelab-env Secret and apply every manifest, on the server"
-depends = ["kubeconfig"]
-run = "mise run apply {{vars.server}}"
-
 [tasks.apply]
 description = "Load .env into the homelab-env Secret and apply every manifest, in <context>"
 hide = true   # run through deploy or kind-deploy
@@ -167,6 +162,11 @@ k apply -k manifests/
 # env vars are read at container start, so pick up any secret changes
 k -n ai rollout restart deploy/hermes-agent
 '''
+
+[tasks.deploy]
+description = "Load .env into the homelab-env Secret and apply every manifest, on the server"
+depends = ["kubeconfig"]
+run = "mise run apply {{vars.server}}"
 
 # --- kind: a local cluster for testing manifests (kind-config.yaml) ---
 
