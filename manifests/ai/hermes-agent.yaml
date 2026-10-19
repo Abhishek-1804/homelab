@@ -19,6 +19,9 @@ metadata:
   namespace: ai
 spec:
   replicas: 1
+  # one Hermes at a time: two would share the data folder and the Discord bot
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: hermes-agent
@@ -33,25 +36,27 @@ spec:
       containers:
         - name: hermes-agent
           image: nousresearch/hermes-agent:latest
-          command:
-            - sh
-            - -c
-            - |
-              hermes gateway start &
-              hermes dashboard --host 0.0.0.0 --port 9119 --insecure
+          # The image's own supervisor runs the gateway (args) and, with
+          # HERMES_DASHBOARD=1, the dashboard; overriding `command` skips it.
+          args: ["gateway", "run"]
+          env:
+            - name: HERMES_DASHBOARD
+              value: "1"
+            # the dashboard requires a login; the password and the session
+            # secret (HERMES_DASHBOARD_BASIC_AUTH_PASSWORD, _SECRET) come from .env
+            - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+              value: abhishek
           # one env var per line of .env (`mise run deploy`)
           envFrom:
             - secretRef:
                 name: homelab-env
-          stdin: true
-          tty: true
           ports:
             - containerPort: 8642  # gateway / OpenAI-compatible API
             - containerPort: 9119  # web dashboard
             - containerPort: 3000  # workspace UI
           volumeMounts:
             - name: data
-              mountPath: /root/.hermes
+              mountPath: /opt/data   # where the image keeps all Hermes state
       volumes:
         - name: data
           persistentVolumeClaim:

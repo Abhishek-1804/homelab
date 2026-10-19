@@ -8,6 +8,7 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 | `mise.toml` | Laptop: tools, the server inventory, tasks |
 | `server/mise.toml` | Everything on a server: packages, SSH, firewall, k3s. `server/` is the only folder sent to servers |
 | `manifests/` | What runs in the cluster |
+| `kind-config.yaml` | A local cluster for testing `manifests/` before they go to the server |
 | `tf/` | Terraform: the state bucket, the AWS budget and Tailscale, and EC2 test servers |
 
 ## Requirements
@@ -33,8 +34,9 @@ Install these yourself:
 | 1Password desktop app | Mounts the secrets as `.env` files (Developer → Environments) and holds the SSH key |
 | AWS CLI | Signs in to AWS for Terraform |
 
-mise installs the rest at the versions pinned in `mise.toml`: `kubectl` and
-`terraform` with `mise install`, and `yq` and `k9s` the first time their tasks run.
+`mise install` installs the rest, listed in `[tools]` at the top of
+`mise.toml`: `k9s`, `kubectl`, `terraform` and `yq`. All are `latest` except
+`kubectl`, which must match the k3s version.
 
 ### Before running tasks
 
@@ -77,8 +79,8 @@ only over Tailscale.** Run `mise run up` any time to re-apply.
 | Task | Does |
 |---|---|
 | `mise run ping` | Every server: up or down, over Tailscale and SSH |
-| `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the cluster |
-| `mise run k9s` | Opens [k9s](https://k9scli.io) on the cluster |
+| `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the server's cluster (`.kube/server`, context `homelab-1`) |
+| `mise run k9s` | Opens [k9s](https://k9scli.io) on the server's cluster |
 
 To add a server, add a block to `mise.toml`:
 
@@ -87,6 +89,21 @@ To add a server, add a block to `mise.toml`:
 host              = "homelab-2"      # its Tailscale name
 bootstrap_command = "curl -fsSL https://mise.run | sh"
 ```
+
+## Testing manifests locally
+
+To try changes to `manifests/` without a server, run them in
+[kind](https://kind.sigs.k8s.io), a Kubernetes cluster in Docker on the laptop.
+Server setup itself (Tailscale, firewall, k3s) is tested on EC2 instead; see
+[Testing the setup flow on EC2](#testing-the-setup-flow-on-ec2).
+
+| Task | Does |
+|---|---|
+| `mise run kind-deploy` | Creates the cluster if needed (`.kube/kind`, context `kind-homelab`) and applies the secrets and every manifest. Apps are on `http://localhost:<port>`, e.g. Homepage on :30000 |
+| `mise run kind-down` | Deletes the cluster and everything in it |
+
+The secrets are the real ones from `.env`, so Hermes connects your actual
+Discord bot. Don't leave it running while Hermes also runs on the server.
 
 ## Secrets
 
@@ -103,6 +120,14 @@ out of the Secret and `mise run tf infra` alone reads.
 To set it up in 1Password: open **Developer → Environments**, create `homelab`,
 and add the variables (e.g. `CLAUDE_CODE_OAUTH_TOKEN`). Then add the
 destination **Local .env file** with the path `.env` in this repo.
+
+The Hermes dashboard requires a login (user `abhishek`, set in
+`manifests/ai/hermes-agent.yaml`). It needs two variables:
+
+| Variable | Value |
+|---|---|
+| `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` | The dashboard password |
+| `HERMES_DASHBOARD_BASIC_AUTH_SECRET` | Keeps you logged in across restarts: any random string, e.g. from `openssl rand -base64 32` |
 
 | Task | Does |
 |---|---|

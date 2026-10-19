@@ -45,7 +45,7 @@ data:
           - "[STATUS] < 400"
       - name: Hermes Agent
         group: AI
-        url: "http://hermes-agent.ai.svc.cluster.local:9119"
+        url: "http://hermes-agent.ai.svc.cluster.local:9119/api/health"   # the one page that needs no login
         interval: 60s
         conditions:
           - "[CONNECTED] == true"

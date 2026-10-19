@@ -3,16 +3,22 @@
 # `mise bootstrap remote`, which sends only server/ over SSH and applies
 # server/mise.toml there.
 
+# Every tool this project uses on the laptop; `mise install` installs them all
 [tools]
-kubectl   = "1.36.5"   # within one minor version of k3s_version in server/mise.toml
-terraform = "1.16.5"   # tf/: throwaway EC2 servers for testing the bootstrap flow
+k9s       = "latest"   # `mise run k9s`
+kind      = "latest"   # `mise run kind-deploy`: a local cluster for testing manifests
+kubectl   = "1.36.5"   # pinned: must stay within one minor version of k3s_version in server/mise.toml
+terraform = "latest"   # `mise run tf`: the state bucket, budget, Tailscale, EC2 test servers
+yq        = "latest"   # `mise run ping` reads the server inventory with it
 
 [vars]
 server = "homelab-1"
 
 [env]
-# kubectl/k9s here talk to the cluster over Tailscale (`mise run kubeconfig`)
-KUBECONFIG = "{{config_root}}/.kube/config"
+# kubectl/k9s here see two contexts, each from its own file: homelab-1, the
+# server over Tailscale (`mise run kubeconfig`), and kind-homelab, the local
+# test cluster (`mise run kind-up`). Pick one with --context.
+KUBECONFIG = "{{config_root}}/.kube/server:{{config_root}}/.kube/kind"
 # terraform in tf/ uses this profile (`mise run tf-login`)
 AWS_PROFILE = "homelab"
 
@@ -62,6 +68,11 @@ key=tailscale_server_key
 terraform -chdir=tf/infra output -raw "$key" | ssh "$usage_destination" 'umask 077; cat > ~/.tskey'
 ssh -t "$usage_destination" 'tailscale status >/dev/null 2>&1 \
     || sudo tailscale up --auth-key="file:$HOME/.tskey"; s=$?; rm -f ~/.tskey; exit $s'
+# the name now means this machine: replace any old host key for it (e.g. a
+# destroyed test server) with the key from the connection already verified
+ssh-keygen -R "$usage_name" >/dev/null 2>&1 || true
+ssh "$usage_destination" cat /etc/ssh/ssh_host_ed25519_key.pub \
+    | awk -v h="$usage_name" '{print h, $1, $2}' >> ~/.ssh/known_hosts
 
 step 5/5 "k3s"
 remote --only task
@@ -84,24 +95,25 @@ for host in $(mise config get bootstrap.remote.hosts | yq -p toml '.[].host'); d
     printf '%-14s tailscale: %-5s ssh: %s\n' "$host" "$ts" "$ssh"
 done
 '''
-tools = { yq = "4.44.2" }
 
 [tasks.kubeconfig]
-description = "Fetch the cluster's kubeconfig so kubectl and k9s here can reach it"
+description = "Fetch the server's kubeconfig (.kube/server) so kubectl and k9s here can reach it"
 shell = "bash -euo pipefail -c"
 run = '''
 mkdir -p .kube
 ssh {{vars.server}} sudo cat /etc/rancher/k3s/k3s.yaml \
-    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.server}})/" > .kube/config
-chmod 600 .kube/config
+    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.server}})/" > .kube/server
+chmod 600 .kube/server
+# k3s calls its context "default"; name it after the server
+KUBECONFIG=.kube/server kubectl config rename-context default {{vars.server}} >/dev/null
 '''
 
 [tasks.k9s]
-description = "Open k9s on the cluster (fetches the kubeconfig first)"
+description = "Open k9s on the server's cluster (fetches the kubeconfig first)"
 depends = ["kubeconfig"]
 raw = true   # k9s is full-screen, so give it the terminal directly
-run = "k9s"
-tools = { k9s = "0.51.0" }
+run = "k9s --context {{vars.server}}"
+
 
 # --- terraform (tf/) ---
 
@@ -135,19 +147,41 @@ run = '''
 '''
 
 [tasks.deploy]
-description = "Load .env into the homelab-env Secret and apply every manifest"
+description = "Load .env into the homelab-env Secret and apply every manifest, on the server"
 depends = ["kubeconfig"]
+run = "mise run apply {{vars.server}}"
+
+[tasks.apply]
+description = "Load .env into the homelab-env Secret and apply every manifest, in <context>"
+hide = true   # run through deploy or kind-deploy
+usage = 'arg "<context>" help="homelab-1 (the server) or kind-homelab (local)"'
 shell = "bash -euo pipefail -c"
 run = '''
-kubectl apply -f manifests/namespaces.yaml
+k() { kubectl --context "$usage_context" "$@"; }
+k apply -f manifests/namespaces.yaml
 # .env is mounted by the 1Password desktop app (see README). TAILSCALE_* is
 # Terraform's admin access to the tailnet, so it stays out of the cluster.
-kubectl -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -k manifests/
+k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
+    --dry-run=client -o yaml | k apply -f -
+k apply -k manifests/
 # env vars are read at container start, so pick up any secret changes
-kubectl -n ai rollout restart deploy/hermes-agent
+k -n ai rollout restart deploy/hermes-agent
 '''
+
+# --- kind: a local cluster for testing manifests (kind-config.yaml) ---
+
+[tasks.kind-up]
+description = "Create the local kind cluster (.kube/kind), unless it exists"
+run = "kind get clusters 2>/dev/null | grep -qx homelab || kind create cluster --config kind-config.yaml --kubeconfig .kube/kind"
+
+[tasks.kind-deploy]
+description = "Apply every manifest to the local kind cluster; apps on http://localhost:<nodePort>"
+depends = ["kind-up"]
+run = "mise run apply kind-homelab"
+
+[tasks.kind-down]
+description = "Delete the local kind cluster"
+run = "kind delete cluster --name homelab --kubeconfig .kube/kind"
 
 # --- global docker cleanup (affects ALL docker, not just homelab) ---
 
