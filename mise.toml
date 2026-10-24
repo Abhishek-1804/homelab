@@ -106,10 +106,12 @@ run = '''
 k() { kubectl --context "$usage_context" "$@"; }
 k apply -f manifests/namespaces.yaml
 # .env is mounted by 1Password; TAILSCALE_* is Terraform's, so it stays out
-k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
-    --dry-run=client -o yaml | k apply -f -
+secret=$(k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
+    --dry-run=client -o yaml | k apply -f -)
+echo "$secret"
 k apply -k manifests/
-k -n ai rollout restart deploy/hermes-agent   # picks up changed secrets
+# Hermes reads its secrets at start: restart it only if they just changed
+if [[ $secret == *configured* ]]; then k -n ai rollout restart deploy/hermes-agent; fi
 '''
 
 [tasks.deploy]
