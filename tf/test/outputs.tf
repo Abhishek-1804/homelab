@@ -1,3 +1,4 @@
+# one `ssh user@ip` per server
 output "ssh" {
-  value = "ssh ${var.username}@${aws_instance.test.public_ip}"
+  value = { for name, server in aws_instance.test : name => "ssh ${var.username}@${server.public_ip}" }
 }

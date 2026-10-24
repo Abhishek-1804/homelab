@@ -1,6 +1,7 @@
-# Everything on a server. This folder is all that gets sent to it: applied by
-# `mise run setup` the first time and `mise run up` after that; re-running
-# only changes what differs.
+# What every server shares, whatever its role. This folder is all that gets
+# sent to it, applied by `mise run bootstrap`; re-running only changes what
+# differs. Each role adds its own file on top: mise.control-plane.toml (the
+# k3s server), later mise.node.toml (k3s agents).
 
 [vars]
 k3s_version = "v1.36.5+k3s1"   # keep kubectl in ../mise.toml within one minor version
@@ -20,12 +21,26 @@ fingerprint = "2596 A99E AAB3 3821 893C 0A79 458C A832 957F 5868"
 "apt:ufw"                 = "latest"
 "apt:unattended-upgrades" = "latest"   # automatic security updates
 
+# Join Tailscale right after the packages, before the firewall turns on: a first
+# run over the LAN would otherwise lock itself out. A failure here stops the run.
+# The join key is dropped in ~/.tskey by `mise run bootstrap`.
+[bootstrap.hooks]
+post-packages = '''
+tailscale status >/dev/null 2>&1 && exit 0
+[ -f ~/.tskey ] || { echo "✗ not on Tailscale and no ~/.tskey: use mise run bootstrap <name>=<user@lan-ip>" >&2; exit 1; }
+sudo systemctl enable --now tailscaled
+sudo tailscale up --auth-key="file:$HOME/.tskey"; s=$?; rm -f ~/.tskey; exit $s
+'''
+
 [bootstrap.services.ssh]
 on_change = "reload"
 
 [bootstrap.services.tailscaled]
 
 [bootstrap.services.ufw]
+
+[bootstrap.services.systemd-logind]
+on_change = "reload"   # the lid setting takes effect now, not at next boot
 
 # --- SSH: keys only ---------------------------------------------------------
 
@@ -74,6 +89,7 @@ source = "10.43.0.0/16"
 [bootstrap.directories."/etc/systemd/logind.conf.d"]
 
 [bootstrap.files."/etc/systemd/logind.conf.d/90-homelab.conf"]
+notify  = ["systemd-logind"]
 content = """
 [Login]
 HandleLidSwitch=ignore
@@ -91,56 +107,3 @@ AllowHibernation=no
 AllowSuspendThenHibernate=no
 AllowHybridSleep=no
 """
-
-# --- k3s --------------------------------------------------------------------
-
-[bootstrap.directories."/etc/rancher/k3s"]
-
-[bootstrap.files."/etc/rancher/k3s/config.yaml"]
-content = """
-# Each key is a `k3s server` flag: https://docs.k3s.io/cli/server
-secrets-encryption: true
-disable:
-  - traefik            # services are reached by NodePort; no ingress needed yet
-kube-proxy-arg:
-  - nodeport-addresses=100.64.0.0/10   # NodePorts answer only on the Tailscale address
-"""
-
-# NodePorts bind to the Tailscale address, so start k3s after Tailscale
-[bootstrap.directories."/etc/systemd/system/k3s.service.d"]
-
-[bootstrap.files."/etc/systemd/system/k3s.service.d/after-tailscale.conf"]
-content = """
-[Unit]
-Wants=tailscaled.service
-After=tailscaled.service
-"""
-
-# `mise bootstrap` runs this last
-[tasks.bootstrap]
-description = "Log in to Tailscale (first run only), then install or upgrade k3s"
-shell = "bash -euo pipefail -c"
-run = '''
-if tailscale status >/dev/null 2>&1; then
-    echo "✓ Tailscale: already logged in"
-else
-    # `mise run setup` joins with a key before this; this is the manual fallback
-    echo "→ Tailscale: not logged in; open the URL below on any device to add this server"
-    sudo tailscale up
-fi
-echo "✓ Tailscale: $(hostname) is $(tailscale ip -4)"
-
-# apply the lid-switch setting now, not at next boot
-sudo systemctl reload systemd-logind
-echo "✓ Closing the lid no longer sleeps"
-
-installed=$(k3s --version 2>/dev/null | awk 'NR==1 {print $3}' || true)
-if [ "$installed" = "{{vars.k3s_version}}" ]; then
-    echo "✓ k3s: already {{vars.k3s_version}}"
-else
-    echo "→ k3s: installing {{vars.k3s_version}} (was: ${installed:-none})"
-    curl -sfL https://get.k3s.io \
-        | sudo INSTALL_K3S_VERSION="{{vars.k3s_version}}" sh -s - --node-ip "$(tailscale ip -4)"
-    echo "✓ k3s: {{vars.k3s_version}} running"
-fi
-'''

@@ -3,6 +3,12 @@ variable "region" {
   default = "us-west-1"
 }
 
+variable "servers" {
+  description = "One EC2 server per name: the control plane first, then the nodes"
+  type        = list(string)
+  default     = ["homelab-1", "homelab-2", "homelab-3"]
+}
+
 variable "instance_type" {
   description = "t3.medium (4 GiB): a t3.small (2 GiB) stopped responding running k3s plus Hermes"
   type        = string

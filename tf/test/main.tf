@@ -1,5 +1,6 @@
-# A throwaway Ubuntu 26.04 server for testing the setup flow:
-# `mise run tf test apply`, then `mise run setup --test homelab-1 abhishek@<ip>`.
+# Throwaway Ubuntu 26.04 servers for testing the setup flow, one per name in
+# var.servers: `mise run tf test apply`, then for each one
+# `mise run bootstrap --test <name>=abhishek@<ip>`.
 
 # Canonical publishes the current Ubuntu image ID here
 data "aws_ssm_parameter" "ubuntu" {
@@ -31,6 +32,7 @@ resource "aws_security_group" "ssh" {
 }
 
 resource "aws_instance" "test" {
+  for_each               = toset(var.servers)
   ami                    = data.aws_ssm_parameter.ubuntu.insecure_value
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.ssh.id]
@@ -49,5 +51,5 @@ resource "aws_instance" "test" {
   EOT
   # user_data only runs on first boot, so a change needs a new server
   user_data_replace_on_change = true
-  tags                        = { Name = "homelab-test" }
+  tags                        = { Name = "homelab-test-${each.key}" }
 }

@@ -6,7 +6,8 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 | File | What it is |
 |---|---|
 | `mise.toml` | Laptop: tools, the server inventory, tasks |
-| `server/mise.toml` | Everything on a server: packages, SSH, firewall, k3s. `server/` is the only folder sent to servers |
+| `server/mise.toml` | What every server shares: packages, Tailscale, SSH, firewall. `server/` is the only folder sent to servers |
+| `server/mise.control-plane.toml` | The control plane on top: the k3s server |
 | `manifests/` | What runs in the cluster |
 | `kind-config.yaml` | A local cluster for testing `manifests/` before they go to the server |
 | `tf/` | Terraform: the state bucket, the AWS budget and Tailscale, and EC2 test servers |
@@ -35,7 +36,7 @@ Install these yourself:
 | AWS CLI | Signs in to AWS for Terraform |
 
 `mise install` installs the rest, listed in `[tools]` at the top of
-`mise.toml`: `k9s`, `kubectl`, `terraform` and `yq`. All are `latest` except
+`mise.toml`: `k9s`, `kind`, `kubectl` and `terraform`. All are `latest` except
 `kubectl`, which must match the k3s version.
 
 ### Before running tasks
@@ -43,8 +44,8 @@ Install these yourself:
 | Check | Needed for | How |
 |---|---|---|
 | Your SSH key is on GitHub | Every server: they authorize the keys at `github.com/<github-user>.keys` | GitHub → Settings → SSH keys. `tf/test/vars.tf` sets `github_user` |
-| Signed in to AWS | `tf`, and `setup` (it reads the Tailscale key from Terraform state) | `mise run tf-login`; check with `aws sts get-caller-identity` |
-| Tailscale is connected | `up`, `ping`, `kubeconfig`, `deploy` | `tailscale status` |
+| Signed in to AWS | `tf`, and `bootstrap` for a new server (it reads the Tailscale key from Terraform state) | `aws login`; check with `aws sts get-caller-identity` |
+| Tailscale is connected | `bootstrap`, `kubeconfig`, `deploy` | `tailscale status` |
 | 1Password is unlocked | `deploy` and `tf infra` (they read `.env`) | Open the desktop app |
 
 ### On a server
@@ -69,20 +70,20 @@ pinned there.
 Once `tf/infra` is applied (see [Terraform](#terraform-tf)), from the laptop:
 
 ```bash
-mise run setup homelab-1 abhishek@192.168.1.50   # first run, over the LAN
-mise run up                                       # over Tailscale; turns the firewall on
-mise run deploy                                   # secrets + apps
+mise run bootstrap homelab-1=abhishek@192.168.1.50   # a new server, over its LAN IP
+mise run deploy                                       # secrets + apps
 ```
 
-`setup` sets the hostname, installs the packages, sets SSH to keys only, keeps
-the laptop awake with the lid closed, joins Tailscale as `tag:homelab` with a
-key from `tf/infra` (no login URL) and installs k3s. `up` repeats all of that
-over Tailscale and adds the firewall. After that, **the server is reachable
-only over Tailscale.** Run `mise run up` any time to re-apply.
+`bootstrap` sets the hostname, installs the packages, joins Tailscale as
+`tag:homelab` with a key from `tf/infra` (no login URL), sets SSH to keys only,
+keeps the laptop awake with the lid closed, turns on the firewall and installs
+k3s. Tailscale joins before the firewall turns on, so the LAN session is only
+cut once Tailscale works. After that, **the server is reachable only over
+Tailscale.** Run `mise run bootstrap` with no arguments any time to re-apply to
+every server.
 
 | Task | Does |
 |---|---|
-| `mise run ping` | Every server: up or down, over Tailscale and SSH |
 | `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the server's cluster (`.kube/server`, context `homelab-1`) |
 | `mise run k9s` | Opens [k9s](https://k9scli.io) on the server's cluster |
 
@@ -158,7 +159,7 @@ kept for billing only. Set it up once:
 1. As root, in **IAM** → **Users**, create `akdp` with console access and the
    `PowerUserAccess` policy (everything except IAM). Sign in as it with
    your account ID and add MFA.
-2. `mise run tf-login` and sign in as `akdp`. That saves the `homelab`
+2. `aws login` and sign in as `akdp`. That saves the `homelab`
    profile in `~/.aws/config` (`mise.toml` sets `AWS_PROFILE=homelab` for
    this repo). Run it again whenever the credentials expire.
 
@@ -166,7 +167,7 @@ kept for billing only. Set it up once:
 
 `tf/infra` replaces the tailnet's access rules: your devices reach everything,
 and servers (`tag:homelab`) reach each other but can never open a connection
-to your devices. It also makes the keys `setup` joins servers with. Tagged
+to your devices. It also makes the keys `bootstrap` joins servers with. Tagged
 servers never have to log in again. Test servers join as *ephemeral*, so
 Tailscale removes them once they go offline.
 
@@ -186,7 +187,7 @@ Terraform talks to Tailscale through an OAuth client. Set it up once:
 ### First time, in order
 
 ```bash
-mise run tf-login
+aws login
 mise run tf state init && mise run tf state apply   # the S3 bucket
 mise run tf infra init && mise run tf infra apply   # budget + Tailscale
 mise run tf test init                               # once, before the first test server
@@ -203,7 +204,7 @@ makes new ones.
 
 ```bash
 mise run tf test apply                            # prints `ssh abhishek@<ip>`
-mise run setup --test homelab-1 abhishek@<ip>     # then up, deploy, as above
+mise run bootstrap --test homelab-1=abhishek@<ip> # then deploy, as above
 mise run tf test destroy                          # when done
 ```
 

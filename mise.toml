@@ -1,98 +1,80 @@
-# The laptop side of the homelab: tools, the server inventory, and the tasks
-# you run here (`mise tasks` to list). The servers themselves are set up by
-# `mise bootstrap remote`, which sends only server/ over SSH and applies
-# server/mise.toml there.
+# The laptop side of the homelab: tools, the server inventory and the tasks you
+# run here (`mise tasks`). Servers get only server/, applied there by
+# `mise bootstrap remote`.
 
-# Every tool this project uses on the laptop; `mise install` installs them all
 [tools]
-k9s       = "latest"   # `mise run k9s`
-kind      = "latest"   # `mise run kind-deploy`: a local cluster for testing manifests
-kubectl   = "1.36.5"   # pinned: must stay within one minor version of k3s_version in server/mise.toml
-terraform = "latest"   # `mise run tf`: the state bucket, budget, Tailscale, EC2 test servers
-yq        = "latest"   # `mise run ping` reads the server inventory with it
+k9s       = "latest"
+kind      = "latest"
+kubectl   = "1.36.5"   # pinned: within one minor version of k3s_version in server/mise.toml
+terraform = "latest"
 
 [vars]
-server = "homelab-1"
+control_plane = "homelab-1"   # the server with the Kubernetes API
 
 [env]
-# kubectl/k9s here see two contexts, each from its own file: homelab-1, the
-# server over Tailscale (`mise run kubeconfig`), and kind-homelab, the local
-# test cluster (`mise run kind-up`). Pick one with --context.
+# two contexts: homelab-1 (`mise run kubeconfig`) and kind-homelab (`mise run kind-deploy`)
 KUBECONFIG = "{{config_root}}/.kube/server:{{config_root}}/.kube/kind"
-# terraform in tf/ uses this profile (`mise run tf-login`)
-AWS_PROFILE = "homelab"
+AWS_PROFILE = "homelab"   # set up by `aws login`
 
-# --- servers ----------------------------------------------------------------
-# One block per server; `host` is its Tailscale name. Add a block to add one.
+# --- servers: one block each; `host` is its Tailscale name -------------------
 
 [bootstrap.remote]
-source = "server"   # only this folder is sent; secrets and tf state never leave the laptop
+source = "server"   # only this folder is sent; secrets and tf state stay here
 
 [bootstrap.remote.hosts.homelab-1]
 host              = "homelab-1"
-bootstrap_command = "curl -fsSL https://mise.run | sh"   # the server downloads mise; uploading it is slow
+tags              = ["control-plane"]
+bootstrap_command = "curl -fsSL https://mise.run | sh"   # faster than uploading mise
 
-# --- tasks ------------------------------------------------------------------
+# nodes: one block each with tags = ["node"], e.g. for the 3 EC2 test servers
+# [bootstrap.remote.hosts.homelab-2]
+# host              = "homelab-2"
+# tags              = ["node"]
+# bootstrap_command = "curl -fsSL https://mise.run | sh"
 
-[tasks.setup]
-description = "First-time setup of a fresh server over the LAN (everything except the firewall)"
+# --- tasks -------------------------------------------------------------------
+
+[tasks.bootstrap]
+description = "Set up servers from server/: new ones over their LAN IP, or every server over Tailscale"
 usage = '''
-arg "<name>" help="the server's name in the inventory, e.g. homelab-1"
-arg "<destination>" help="[user@]LAN-IP, used only for this first run"
-flag "--test" help="an EC2 test server: joins Tailscale as ephemeral, so it disappears once offline"
+arg "[new]" var=#true help="new servers as <name>=<user@lan-ip>, control plane first; omit to update every server"
+flag "--test" help="EC2 test servers: join Tailscale as ephemeral, so they disappear once offline"
 '''
 shell = "bash -euo pipefail -c"
 run = '''
-step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
-# --host targets ignore the inventory, so name the source and mise install here.
-# -q hides mise's internal ssh commands; errors still show. --yes: no prompts.
-remote() {
-    mise -q bootstrap remote --yes --host "$usage_destination" --source server \
-        --bootstrap-command "curl -fsSL https://mise.run | sh" "$@"
-}
+# a server's role is its inventory tag; server/mise.<role>.toml is loaded on top of server/mise.toml
+role() { mise config get "bootstrap.remote.hosts.$1.tags" 2>/dev/null | grep -oE 'control-plane|node' | head -1; }
 
-step 1/5 "Hostname: $usage_name"
-ssh -t "$usage_destination" sudo hostnamectl set-hostname "$usage_name"
+if [ -z "${usage_new:-}" ]; then
+    mise bootstrap remote --tag control-plane --remote-env control-plane --update --yes
+    if mise config get bootstrap.remote.hosts | grep -q '"node"'; then
+        mise bootstrap remote --tag node --remote-env node --update --yes
+    fi
+    exit
+fi
 
-step 2/5 "Packages: openssh-server, tailscale, ufw, unattended-upgrades"
-remote --only packages --update
+eval "set -- $usage_new"   # usage passes [new] shell-quoted
+for new in "$@"; do
+    name=${new%%=*}; dest=${new#*=}; r=$(role "$name" || true)
+    [ -n "$r" ] || { echo "✗ $name: add it to [bootstrap.remote.hosts] with a control-plane or node tag" >&2; exit 1; }
 
-# together, so a changed SSH config reloads ssh
-step 3/5 "Config files and services: SSH keys only, no sleep, k3s config"
-remote --only files,services
+    ssh -t "$dest" sudo hostnamectl set-hostname "$name"
+    # Tailscale join key from tf/infra; server/mise.toml uses it before the firewall
+    key=tailscale_server_key
+    [ "${usage_test:-false}" = true ] && key=tailscale_test_key
+    terraform -chdir=tf/infra output -raw "$key" | ssh "$dest" 'umask 077; cat > ~/.tskey'
+    # a node also needs the control plane's join token, read over Tailscale
+    if [ "$r" = node ]; then
+        ssh {{vars.control_plane}} sudo cat /var/lib/rancher/k3s/server/node-token \
+            | ssh "$dest" 'umask 077; cat > ~/.k3s-token'
+    fi
+    # the name now means this machine: replace any old host key saved for it
+    ssh-keygen -R "$name" >/dev/null 2>&1 || true
+    ssh "$dest" cat /etc/ssh/ssh_host_ed25519_key.pub | awk -v h="$name" '{print h, $1, $2}' >> ~/.ssh/known_hosts
 
-step 4/5 "Tailscale: joining as tag:homelab"
-# the join key is made by tf/infra; it goes through a private file, not the command line
-key=tailscale_server_key
-[ "${usage_test:-false}" = true ] && key=tailscale_test_key
-terraform -chdir=tf/infra output -raw "$key" | ssh "$usage_destination" 'umask 077; cat > ~/.tskey'
-ssh -t "$usage_destination" 'tailscale status >/dev/null 2>&1 \
-    || sudo tailscale up --auth-key="file:$HOME/.tskey"; s=$?; rm -f ~/.tskey; exit $s'
-# the name now means this machine: replace any old host key for it (e.g. a
-# destroyed test server) with the key from the connection already verified
-ssh-keygen -R "$usage_name" >/dev/null 2>&1 || true
-ssh "$usage_destination" cat /etc/ssh/ssh_host_ed25519_key.pub \
-    | awk -v h="$usage_name" '{print h, $1, $2}' >> ~/.ssh/known_hosts
-
-step 5/5 "k3s"
-remote --only task
-
-# the firewall would close the LAN SSH session this ran over
-printf '\nDone. Next: mise run up (over Tailscale; turns on the firewall)\n'
-'''
-
-[tasks.up]
-description = "Bring every server in line with this repo, over Tailscale (safe to re-run)"
-run = "mise bootstrap remote --all --update --yes"   # --update: apt update first; --yes: no prompts
-
-[tasks.ping]
-description = "Check every server answers over Tailscale and SSH"
-shell = "bash -euo pipefail -c"
-run = '''
-for host in $(mise config get bootstrap.remote.hosts | yq -p toml '.[].host'); do
-    ts=$(tailscale ping -c 1 --timeout 3s "$host" >/dev/null 2>&1 && echo up || echo down)
-    ssh=$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" true 2>/dev/null && echo up || echo down)
-    printf '%-14s tailscale: %-5s ssh: %s\n' "$host" "$ts" "$ssh"
+    # everything else, firewall included: afterwards only Tailscale reaches it
+    mise bootstrap remote --yes --update --host "$dest" --source server --remote-env "$r" \
+        --bootstrap-command "curl -fsSL https://mise.run | sh"
 done
 '''
 
@@ -101,28 +83,20 @@ description = "Fetch the server's kubeconfig (.kube/server) so kubectl and k9s h
 shell = "bash -euo pipefail -c"
 run = '''
 mkdir -p .kube
-ssh {{vars.server}} sudo cat /etc/rancher/k3s/k3s.yaml \
-    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.server}})/" > .kube/server
+ssh {{vars.control_plane}} sudo cat /etc/rancher/k3s/k3s.yaml \
+    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.control_plane}})/" > .kube/server
 chmod 600 .kube/server
-# k3s calls its context "default"; name it after the server
-KUBECONFIG=.kube/server kubectl config rename-context default {{vars.server}} >/dev/null
+KUBECONFIG=.kube/server kubectl config rename-context default {{vars.control_plane}} >/dev/null
 '''
 
 [tasks.k9s]
-description = "Open k9s on the server's cluster (fetches the kubeconfig first)"
+description = "Open k9s on the server's cluster"
 depends = ["kubeconfig"]
-raw = true   # k9s is full-screen, so give it the terminal directly
-run = "k9s --context {{vars.server}}"
-
-
-# --- terraform (tf/) ---
-
-[tasks.tf-login]
-description = "Sign in to AWS in the browser as the akdp IAM user (short-lived credentials)"
-run = "aws login"
+raw = true   # k9s is full-screen
+run = "k9s --context {{vars.control_plane}}"
 
 [tasks.tf]
-description = "Run terraform in tf/<stack>, e.g. `mise run tf infra plan`"
+description = "Run terraform in tf/<stack>, e.g. `mise run tf infra plan` (sign in first with `aws login`)"
 usage = '''
 arg "<stack>" help="state: the S3 bucket for state; infra: budget and Tailscale; test: EC2 test server" {
   choices "state" "infra" "test"
@@ -132,7 +106,7 @@ arg "[args]" var=#true help="passed on to terraform"
 '''
 shell = "bash -euo pipefail -c"
 run = '''
-# tf/infra needs the Tailscale OAuth client from .env; nothing else in it
+# tf/infra needs the Tailscale OAuth client from .env, and nothing else from it
 if [ "$usage_stack" = infra ]; then set -a; . <(grep '^TAILSCALE_' .env); set +a; fi
 # usage passes [args] shell-quoted, so eval splits them back into words
 eval "terraform -chdir=tf/$usage_stack $usage_command ${usage_args:-}"
@@ -141,7 +115,7 @@ eval "terraform -chdir=tf/$usage_stack $usage_command ${usage_args:-}"
 # --- secrets and apps (.env, manifests/) ---
 
 [tasks.env-local]
-description = "Regenerate .env.local from the mounted .env: variable names only, never values"
+description = "Write .env.local: the variable names in .env, never values"
 run = '''
 { echo "# Generated by \`mise run env-local\` from .env: the secrets that exist, without values."
   awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ { print $1 "=" }' .env
@@ -156,56 +130,27 @@ shell = "bash -euo pipefail -c"
 run = '''
 k() { kubectl --context "$usage_context" "$@"; }
 k apply -f manifests/namespaces.yaml
-# .env is mounted by the 1Password desktop app (see README). TAILSCALE_* is
-# Terraform's admin access to the tailnet, so it stays out of the cluster.
+# .env is mounted by 1Password; TAILSCALE_* is Terraform's, so it stays out
 k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
     --dry-run=client -o yaml | k apply -f -
 k apply -k manifests/
-# env vars are read at container start, so pick up any secret changes
-k -n ai rollout restart deploy/hermes-agent
+k -n ai rollout restart deploy/hermes-agent   # picks up changed secrets
 '''
 
 [tasks.deploy]
 description = "Load .env into the homelab-env Secret and apply every manifest, on the server"
 depends = ["kubeconfig"]
-run = "mise run apply {{vars.server}}"
-
-# --- kind: a local cluster for testing manifests (kind-config.yaml) ---
-
-[tasks.kind-up]
-description = "Create the local kind cluster (.kube/kind), unless it exists"
-run = "kind get clusters 2>/dev/null | grep -qx homelab || kind create cluster --config kind-config.yaml --kubeconfig .kube/kind"
+run = "mise run apply {{vars.control_plane}}"
 
 [tasks.kind-deploy]
-description = "Apply every manifest to the local kind cluster; apps on http://localhost:<nodePort>"
-depends = ["kind-up"]
-run = "mise run apply kind-homelab"
+description = "The same, on a local kind cluster (created if needed); apps on http://localhost:<nodePort>"
+shell = "bash -euo pipefail -c"
+run = '''
+kind get clusters 2>/dev/null | grep -qx homelab \
+    || kind create cluster --config kind-config.yaml --kubeconfig .kube/kind
+mise run apply kind-homelab
+'''
 
 [tasks.kind-down]
 description = "Delete the local kind cluster"
 run = "kind delete cluster --name homelab --kubeconfig .kube/kind"
-
-# --- global docker cleanup (affects ALL docker, not just homelab) ---
-
-[tasks.docker-clean-containers]
-description = "Stop and remove every container"
-run = 'ids=$(docker ps -aq); [ -n "$ids" ] && docker rm -f $ids || echo "no containers"'
-
-[tasks.docker-clean-images]
-description = "Remove every image (clears containers first — they hold image references)"
-depends = ["docker-clean-containers"]
-run = 'ids=$(docker images -aq); [ -n "$ids" ] && docker rmi -f $ids || echo "no images"'
-
-[tasks.docker-clean-volumes]
-description = "Remove every volume (clears containers first — running ones hold volumes)"
-depends = ["docker-clean-containers"]
-run = 'ids=$(docker volume ls -q); [ -n "$ids" ] && docker volume rm -f $ids || echo "no volumes"'
-
-[tasks.docker-clean-networks]
-description = "Remove every user-defined network (clears containers first; built-ins kept)"
-depends = ["docker-clean-containers"]
-run = 'ids=$(docker network ls --filter type=custom -q); [ -n "$ids" ] && docker network rm $ids || echo "no networks"'
-
-[tasks.docker-nuke]
-description = "Wipe ALL docker state: containers, images, volumes, networks"
-depends = ["docker-clean-images", "docker-clean-volumes", "docker-clean-networks"]
