@@ -1,6 +1,4 @@
-- Oracle Cloud Always Free ARM server (4 OCPU, 24 GB) as a second k3s node over Tailscale.
 - backups/restore
-- Adding a k3s agent node: `setup --agent` (join token fetched from homelab-1 over SSH), tag agents in the inventory and load server/mise.agent.toml with `--remote-env agent` so `up` installs k3s as an agent there; flannel over tailscale0.
 - game server
 - cloudflare tunnel for public endpoints
 - only backup persistant volumes?

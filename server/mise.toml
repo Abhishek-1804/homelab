@@ -1,7 +1,5 @@
-# What every server shares, whatever its role. This folder is all that gets
-# sent to it, applied by `mise run bootstrap`; re-running only changes what
-# differs. Each role adds its own file on top: mise.control-plane.toml (the
-# k3s server), later mise.node.toml (k3s agents).
+# Everything on the server. This folder is all that gets sent to it, applied by
+# `mise run bootstrap`; re-running only changes what differs.
 
 [vars]
 k3s_version = "v1.36.5+k3s1"   # keep kubectl in ../mise.toml within one minor version
@@ -107,3 +105,35 @@ AllowHibernation=no
 AllowSuspendThenHibernate=no
 AllowHybridSleep=no
 """
+
+# --- k3s --------------------------------------------------------------------
+
+[bootstrap.directories."/etc/rancher/k3s"]
+
+[bootstrap.files."/etc/rancher/k3s/config.yaml"]
+content = """
+# Each key is a `k3s server` flag: https://docs.k3s.io/cli/server
+secrets-encryption: true
+disable:
+  - traefik            # services are reached by NodePort; no ingress needed yet
+kube-proxy-arg:
+  - nodeport-addresses=100.64.0.0/10   # NodePorts answer only on the Tailscale address
+"""
+
+# k3s uses the Tailscale address, so start it after Tailscale
+[bootstrap.directories."/etc/systemd/system/k3s.service.d"]
+
+[bootstrap.files."/etc/systemd/system/k3s.service.d/after-tailscale.conf"]
+content = """
+[Unit]
+Wants=tailscaled.service
+After=tailscaled.service
+"""
+
+# `mise bootstrap` runs this last; the installer is safe to re-run (it restarts k3s)
+[tasks.bootstrap]
+shell = "bash -euo pipefail -c"
+run = '''
+curl -sfL https://get.k3s.io \
+    | sudo INSTALL_K3S_VERSION="{{vars.k3s_version}}" sh -s - --node-ip "$(tailscale ip -4)"
+'''

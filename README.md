@@ -5,9 +5,8 @@ managed with [mise](https://mise.jdx.dev) from the laptop.
 
 | File | What it is |
 |---|---|
-| `mise.toml` | Laptop: tools, the server inventory, tasks |
-| `server/mise.toml` | What every server shares: packages, Tailscale, SSH, firewall. `server/` is the only folder sent to servers |
-| `server/mise.control-plane.toml` | The control plane on top: the k3s server |
+| `mise.toml` | Laptop: tools and tasks; `vars.control_plane` names the server |
+| `server/mise.toml` | Everything on the server: packages, Tailscale, SSH, firewall, k3s. `server/` is the only folder sent to it |
 | `manifests/` | What runs in the cluster |
 | `kind-config.yaml` | A local cluster for testing `manifests/` before they go to the server |
 | `tf/` | Terraform: the state bucket, the AWS budget and Tailscale, and EC2 test servers |
@@ -87,13 +86,6 @@ every server.
 | `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the server's cluster (`.kube/server`, context `homelab-1`) |
 | `mise run k9s` | Opens [k9s](https://k9scli.io) on the server's cluster |
 
-To add a server, add a block to `mise.toml`:
-
-```toml
-[bootstrap.remote.hosts.homelab-2]
-host              = "homelab-2"      # its Tailscale name
-bootstrap_command = "curl -fsSL https://mise.run | sh"
-```
 
 ## Testing manifests locally
 
