@@ -129,7 +129,7 @@ The Hermes dashboard requires a login (user `abhishek`, set in
 | Task | Does |
 |---|---|
 | `mise run deploy` | Pushes the current secrets to the cluster (after any change in 1Password) |
-| `mise run env-local` | Writes `.env.local`: the variable names in `.env`, without values |
+| `mise run generate-env-local` | Writes `.env.local`: the variable names in `.env`, without values |
 
 ## Terraform (`tf/`)
 
