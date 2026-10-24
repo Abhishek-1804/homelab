@@ -42,14 +42,26 @@ spec:
           env:
             - name: HERMES_DASHBOARD
               value: "1"
-            # the dashboard requires a login; the password and the session
-            # secret (HERMES_DASHBOARD_BASIC_AUTH_PASSWORD, _SECRET) come from .env
             - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
               value: abhishek
-          # one env var per line of .env (`mise run deploy`)
-          envFrom:
-            - secretRef:
-                name: homelab-env
+            # The rest come from 1Password: .env → the homelab-env Secret
+            # (`mise run deploy`). Hermes gets only what's listed here, and a
+            # missing one stops the pod from starting, naming the key.
+            # Hermes-only settings (allowed Discord users, X, ...) are set in
+            # its dashboard instead and kept in its data folder.
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom: { secretKeyRef: { name: homelab-env, key: CLAUDE_CODE_OAUTH_TOKEN } }
+            - name: DISCORD_BOT_TOKEN
+              valueFrom: { secretKeyRef: { name: homelab-env, key: DISCORD_BOT_TOKEN } }
+            # GitHub token for Hermes's own backups: Contents read/write on
+            # Abhishek-1804/hermes-backups only
+            - name: HERMES_BACKUP_PAT
+              valueFrom: { secretKeyRef: { name: homelab-env, key: HERMES_BACKUP_PAT } }
+            # dashboard login password, and the key that signs its session cookies
+            - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+              valueFrom: { secretKeyRef: { name: homelab-env, key: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD } }
+            - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
+              valueFrom: { secretKeyRef: { name: homelab-env, key: HERMES_DASHBOARD_BASIC_AUTH_SECRET } }
           ports:
             - containerPort: 8642  # gateway / OpenAI-compatible API
             - containerPort: 9119  # web dashboard

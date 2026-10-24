@@ -138,6 +138,8 @@ if [ "$usage_stack" = infra ]; then set -a; . <(grep '^TAILSCALE_' .env); set +a
 eval "terraform -chdir=tf/$usage_stack $usage_command ${usage_args:-}"
 '''
 
+# --- secrets and apps (.env, manifests/) ---
+
 [tasks.env-local]
 description = "Regenerate .env.local from the mounted .env: variable names only, never values"
 run = '''

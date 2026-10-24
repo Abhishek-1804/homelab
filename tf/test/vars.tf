@@ -4,9 +4,9 @@ variable "region" {
 }
 
 variable "instance_type" {
-  description = "t3.small (2 GiB) is the smallest that runs k3s"
+  description = "t3.medium (4 GiB): a t3.small (2 GiB) stopped responding running k3s plus Hermes"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "disk_size" {
