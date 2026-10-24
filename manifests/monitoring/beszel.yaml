@@ -1,0 +1,103 @@
+# Beszel: server monitoring (CPU, memory, disk, temperatures, history).
+# The hub is the web UI; the agent reports the host's stats to it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beszel-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: beszel-pv
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beszel
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # one writer for its database
+  selector:
+    matchLabels:
+      app: beszel
+  template:
+    metadata:
+      labels:
+        app: beszel
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: beszel
+          image: henrygd/beszel:latest
+          env:
+            - name: APP_URL
+              value: http://homelab-1.tail53266a.ts.net:30020   # the address Homepage links to
+          ports:
+            - containerPort: 8090
+          volumeMounts:
+            - name: data
+              mountPath: /beszel_data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: beszel-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beszel
+  namespace: monitoring
+spec:
+  selector:
+    app: beszel
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8090
+      nodePort: 30020
+---
+# The agent runs in the host's network so it sees the host's real interfaces,
+# and connects out to the hub, so nothing new is opened. Its key and token come
+# from the hub's UI (see README) through 1Password; until they're set, it can't
+# connect.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: beszel-agent
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: beszel-agent
+  template:
+    metadata:
+      labels:
+        app: beszel-agent
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet   # still resolve the hub's service name
+      containers:
+        - name: beszel-agent
+          image: henrygd/beszel-agent:latest
+          env:
+            - name: HUB_URL
+              value: http://beszel.monitoring.svc.cluster.local:8090
+            - name: KEY
+              valueFrom: { secretKeyRef: { name: homelab-env, key: BESZEL_KEY, optional: true } }
+            - name: TOKEN
+              valueFrom: { secretKeyRef: { name: homelab-env, key: BESZEL_TOKEN, optional: true } }
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/beszel-agent
+      volumes:
+        - name: state
+          hostPath:
+            path: /srv/homelab/beszel-agent
+            type: DirectoryOrCreate

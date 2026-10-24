@@ -2,3 +2,4 @@
 - cloudflare tunnel for public endpoints
 - hermes
     - backup updates on another discord channel
+- maybe just inject all secrets at once?

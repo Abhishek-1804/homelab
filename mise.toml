@@ -97,13 +97,16 @@ shell = "bash -euo pipefail -c"
 run = '''
 k() { kubectl --kubeconfig "$usage_kubeconfig" "$@"; }
 k apply -f manifests/namespaces.yaml
-# .env is mounted by 1Password; TAILSCALE_* is Terraform's, so it stays out
-secret=$(k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
-    --dry-run=client -o yaml | k apply -f -)
-echo "$secret"
+# .env (mounted by 1Password) becomes a homelab-env Secret per namespace, each
+# with only its apps' keys; TAILSCALE_* is Terraform's, so it stays out
+secret() { k -n "$1" create secret generic homelab-env --from-env-file=/dev/stdin \
+    --dry-run=client -o yaml | k apply -f -; }
+ai=$(grep -vE '^(TAILSCALE|BESZEL)_' .env | secret ai); echo "$ai"
+monitoring=$(grep -E '^BESZEL_' .env | secret monitoring); echo "$monitoring"
 k apply -k manifests/
-# Hermes reads its secrets at start: restart it only if they just changed
-if [[ $secret == *configured* ]]; then k -n ai rollout restart deploy/hermes-agent; fi
+# apps read their secrets at start: restart them only if theirs just changed
+if [[ $ai == *configured* ]]; then k -n ai rollout restart deploy/hermes-agent; fi
+if [[ $monitoring == *configured* ]]; then k -n monitoring rollout restart ds/beszel-agent; fi
 '''
 
 [tasks.deploy]

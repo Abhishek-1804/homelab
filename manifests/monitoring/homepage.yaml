@@ -20,6 +20,10 @@ data:
             href: http://homelab-1.tail53266a.ts.net:30016
             description: Live container logs
             icon: dozzle.png
+        - Beszel:
+            href: http://homelab-1.tail53266a.ts.net:30020
+            description: Server stats and temperatures
+            icon: beszel.png
     - AI:
         - Hermes Agent:
             href: http://homelab-1.tail53266a.ts.net:30008

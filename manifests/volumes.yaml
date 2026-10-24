@@ -28,3 +28,17 @@ spec:
   hostPath:
     path: /srv/homelab/hermes-agent
     type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: beszel-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /srv/homelab/beszel
+    type: DirectoryOrCreate

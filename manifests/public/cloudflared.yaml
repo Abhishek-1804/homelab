@@ -1,0 +1,28 @@
+# Cloudflare quick tunnel: Gatus on a public, random
+# https://<words>.trycloudflare.com address (in this pod's log; it changes
+# whenever the pod restarts). cloudflared connects out to Cloudflare, so no
+# port opens on the server. Everything in this namespace is public.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: public
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --url
+            - http://gatus.monitoring.svc.cluster.local:80
