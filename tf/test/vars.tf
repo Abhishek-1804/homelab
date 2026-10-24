@@ -16,7 +16,7 @@ variable "disk_size" {
 }
 
 variable "username" {
-  description = "The login user, the same as on the real server"
+  description = "The login user (vars.user in mise.test.toml)"
   type        = string
   default     = "abhishek"
 }

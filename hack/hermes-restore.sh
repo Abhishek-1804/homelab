@@ -5,7 +5,7 @@
 set -euo pipefail
 
 zip=${1:-}   # without one, only the secret checks and restart below run
-k() { kubectl --context "${CONTEXT:-homelab-1}" -n ai "$@"; }
+k() { kubectl --context "${CONTEXT:-homelab-1}" -n ai "$@"; }   # CONTEXT=homelab-test for EC2
 
 pod=$(k get pods -l app=hermes-agent -o jsonpath='{.items[0].metadata.name}')
 if [ -n "$zip" ]; then

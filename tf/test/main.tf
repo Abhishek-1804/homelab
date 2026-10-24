@@ -1,5 +1,5 @@
 # A throwaway Ubuntu 26.04 server for testing the setup flow:
-# `mise run tf test apply`, then `mise run bootstrap --test homelab-1=abhishek@<ip>`.
+# `mise run tf test apply`, then `MISE_ENV=test mise run bootstrap <ip>`.
 
 # Canonical publishes the current Ubuntu image ID here
 data "aws_ssm_parameter" "ubuntu" {

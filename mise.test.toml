@@ -1,0 +1,7 @@
+# MISE_ENV=test: point every task at the EC2 test server (tf/test) instead of
+# the real one, e.g. `MISE_ENV=test mise run bootstrap <ec2-ip>`.
+[vars]
+control_plane = "homelab-test"
+user          = "abhishek"             # tf/test's username
+tailscale_key = "tailscale_test_key"   # ephemeral: leaves the tailnet once offline
+kubeconfig    = ".kube/kubeconfig-test-server"

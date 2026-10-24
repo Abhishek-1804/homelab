@@ -9,11 +9,14 @@ kubectl   = "1.36.5"   # pinned: within one minor version of k3s_version in serv
 terraform = "latest"
 
 [vars]
-control_plane = "homelab-1"   # the server with the Kubernetes API
+control_plane = "homelab-1"      # the server with the Kubernetes API (its Tailscale name)
+user          = "akdp-latitude"  # its login user
+tailscale_key = "tailscale_server_key"   # the tf/infra output it joins with
+kubeconfig    = ".kube/kubeconfig-server"
 
 [env]
-# two contexts: homelab-1 (`mise run kubeconfig`) and kind-homelab (`mise run kind-deploy`)
-KUBECONFIG = "{{config_root}}/.kube/server:{{config_root}}/.kube/kind"
+# one file per cluster: the server's (`mise run kubeconfig`) and kind's (`mise run kind-deploy`)
+KUBECONFIG = "{{config_root}}/{{vars.kubeconfig}}:{{config_root}}/.kube/kubeconfig-kind-local"
 AWS_PROFILE = "homelab"   # set up by `aws login`
 
 # --- tasks -------------------------------------------------------------------
@@ -21,38 +24,44 @@ AWS_PROFILE = "homelab"   # set up by `aws login`
 [tasks.bootstrap]
 description = "Set up the server from server/: a new one over its LAN IP, or update it over Tailscale"
 usage = '''
-arg "[new]" help="a new server, as <name>=<user@lan-ip>, e.g. homelab-1=abhishek@192.168.1.50; omit to update"
-flag "--test" help="an EC2 test server: joins Tailscale as ephemeral, so it disappears once offline"
+arg "[ip]" help="a new server's LAN IP (or the EC2 test server's public IP); omit to update the server over Tailscale"
 '''
 shell = "bash -euo pipefail -c"
 run = '''
-target={{vars.control_plane}}   # an update goes over Tailscale
-if [ -n "${usage_new:-}" ]; then
-    name=${usage_new%%=*}; target=${usage_new#*=}
-    ssh -t "$target" sudo hostnamectl set-hostname "$name"
+remote() {
+    mise bootstrap remote --yes --update --source server --host "$@" \
+        --bootstrap-command "curl -fsSL https://mise.run | sh"   # faster than uploading mise
+}
+if [ -n "${usage_ip:-}" ]; then
+    name={{vars.control_plane}}; target={{vars.user}}@$usage_ip
+    # a fresh install only takes passwords: copy your key once (server/mise.toml
+    # turns password logins off at the end of this run)
+    SSH_AUTH_SOCK=~/.1password/agent.sock ssh-copy-id "$target"
+    # the rest runs sudo without a terminal: allow it without a password (asks for it once)
+    ssh -t "$target" "sudo -n true 2>/dev/null || echo '${target%@*} ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/90-homelab >/dev/null"
+    ssh "$target" sudo hostnamectl set-hostname "$name"
     # Tailscale join key from tf/infra; server/mise.toml uses it before the firewall
-    key=tailscale_server_key
-    [ "${usage_test:-false}" = true ] && key=tailscale_test_key
-    terraform -chdir=tf/infra output -raw "$key" | ssh "$target" 'umask 077; cat > ~/.tskey'
+    terraform -chdir=tf/infra output -raw {{vars.tailscale_key}} | ssh "$target" 'umask 077; cat > ~/.tskey'
     # the name now means this machine: replace any old host key saved for it
     ssh-keygen -R "$name" >/dev/null 2>&1 || true
     ssh "$target" cat /etc/ssh/ssh_host_ed25519_key.pub | awk -v h="$name" '{print h, $1, $2}' >> ~/.ssh/known_hosts
+    # over the LAN, everything but the firewall (mise won't firewall off its own session)
+    remote "$target" --skip firewall
 fi
 
-# everything in server/, firewall included: afterwards only Tailscale reaches it
-mise bootstrap remote --yes --update --host "$target" --source server \
-    --bootstrap-command "curl -fsSL https://mise.run | sh"   # faster than uploading mise
+# over Tailscale, everything: the firewall then leaves only Tailscale in
+remote {{vars.user}}@{{vars.control_plane}}
 '''
 
 [tasks.kubeconfig]
-description = "Fetch the server's kubeconfig (.kube/server) so kubectl and k9s here can reach it"
+description = "Fetch the server's kubeconfig (.kube/kubeconfig-server) so kubectl and k9s here can reach it"
 shell = "bash -euo pipefail -c"
 run = '''
 mkdir -p .kube
-ssh {{vars.control_plane}} sudo cat /etc/rancher/k3s/k3s.yaml \
-    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.control_plane}})/" > .kube/server
-chmod 600 .kube/server
-KUBECONFIG=.kube/server kubectl config rename-context default {{vars.control_plane}} >/dev/null
+ssh {{vars.user}}@{{vars.control_plane}} sudo cat /etc/rancher/k3s/k3s.yaml \
+    | sed "s/127.0.0.1/$(tailscale ip -4 {{vars.control_plane}})/" > {{vars.kubeconfig}}
+chmod 600 {{vars.kubeconfig}}
+KUBECONFIG={{vars.kubeconfig}} kubectl config rename-context default {{vars.control_plane}} >/dev/null
 '''
 
 [tasks.k9s]
@@ -113,10 +122,10 @@ description = "The same, on a local kind cluster (created if needed); apps on ht
 shell = "bash -euo pipefail -c"
 run = '''
 kind get clusters 2>/dev/null | grep -qx homelab \
-    || kind create cluster --config kind-config.yaml --kubeconfig .kube/kind
+    || kind create cluster --config kind-config.yaml --kubeconfig .kube/kubeconfig-kind-local
 mise run apply kind-homelab
 '''
 
 [tasks.kind-down]
 description = "Delete the local kind cluster"
-run = "kind delete cluster --name homelab --kubeconfig .kube/kind"
+run = "kind delete cluster --name homelab --kubeconfig .kube/kubeconfig-kind-local"

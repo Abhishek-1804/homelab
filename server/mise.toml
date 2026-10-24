@@ -19,13 +19,12 @@ fingerprint = "2596 A99E AAB3 3821 893C 0A79 458C A832 957F 5868"
 "apt:ufw"                 = "latest"
 "apt:unattended-upgrades" = "latest"   # automatic security updates
 
-# Join Tailscale right after the packages, before the firewall turns on: a first
-# run over the LAN would otherwise lock itself out. A failure here stops the run.
-# The join key is dropped in ~/.tskey by `mise run bootstrap`.
+# Join Tailscale right after the packages, with the key `mise run bootstrap`
+# drops in ~/.tskey. A failure here stops the run.
 [bootstrap.hooks]
 post-packages = '''
-tailscale status >/dev/null 2>&1 && exit 0
-[ -f ~/.tskey ] || { echo "✗ not on Tailscale and no ~/.tskey: use mise run bootstrap <name>=<user@lan-ip>" >&2; exit 1; }
+if tailscale status >/dev/null 2>&1; then rm -f ~/.tskey; exit 0; fi   # already joined
+[ -f ~/.tskey ] || { echo "✗ not on Tailscale and no ~/.tskey: use mise run bootstrap <lan-ip>" >&2; exit 1; }
 sudo systemctl enable --now tailscaled
 sudo tailscale up --auth-key="file:$HOME/.tskey"; s=$?; rm -f ~/.tskey; exit $s
 '''
@@ -37,12 +36,10 @@ on_change = "reload"
 
 [bootstrap.services.ufw]
 
-[bootstrap.services.systemd-logind]
-on_change = "reload"   # the lid setting takes effect now, not at next boot
-
 # --- SSH: keys only ---------------------------------------------------------
 
-[bootstrap.files."/etc/ssh/sshd_config.d/90-homelab.conf"]
+# 01-: sshd keeps the first value it reads, and the installer's 50-cloud-init.conf turns passwords on
+[bootstrap.files."/etc/ssh/sshd_config.d/01-homelab.conf"]
 notify  = ["ssh"]
 content = """
 PasswordAuthentication no
@@ -87,7 +84,6 @@ source = "10.43.0.0/16"
 [bootstrap.directories."/etc/systemd/logind.conf.d"]
 
 [bootstrap.files."/etc/systemd/logind.conf.d/90-homelab.conf"]
-notify  = ["systemd-logind"]
 content = """
 [Login]
 HandleLidSwitch=ignore
@@ -134,6 +130,7 @@ After=tailscaled.service
 [tasks.bootstrap]
 shell = "bash -euo pipefail -c"
 run = '''
+sudo systemctl reload systemd-logind   # the lid setting takes effect now, not at next boot
 curl -sfL https://get.k3s.io \
     | sudo INSTALL_K3S_VERSION="{{vars.k3s_version}}" sh -s - --node-ip "$(tailscale ip -4)"
 '''

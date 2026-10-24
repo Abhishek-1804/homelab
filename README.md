@@ -69,7 +69,7 @@ pinned there.
 Once `tf/infra` is applied (see [Terraform](#terraform-tf)), from the laptop:
 
 ```bash
-mise run bootstrap homelab-1=abhishek@192.168.1.50   # a new server, over its LAN IP
+mise run bootstrap 192.168.1.50   # a new server, over its LAN IP
 mise run deploy                                       # secrets + apps
 ```
 
@@ -83,7 +83,7 @@ every server.
 
 | Task | Does |
 |---|---|
-| `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the server's cluster (`.kube/server`, context `homelab-1`) |
+| `mise run kubeconfig` | Lets `kubectl`/`k9s` on the laptop reach the server's cluster (`.kube/kubeconfig-server`, context `homelab-1`) |
 | `mise run k9s` | Opens [k9s](https://k9scli.io) on the server's cluster |
 
 
@@ -96,7 +96,7 @@ Server setup itself (Tailscale, firewall, k3s) is tested on EC2 instead; see
 
 | Task | Does |
 |---|---|
-| `mise run kind-deploy` | Creates the cluster if needed (`.kube/kind`, context `kind-homelab`) and applies the secrets and every manifest. Apps are on `http://localhost:<port>`, e.g. Homepage on :30000 |
+| `mise run kind-deploy` | Creates the cluster if needed (`.kube/kubeconfig-kind-local`, context `kind-homelab`) and applies the secrets and every manifest. Apps are on `http://localhost:<port>`, e.g. Homepage on :30000 |
 | `mise run kind-down` | Deletes the cluster and everything in it |
 
 The secrets are the real ones from `.env`, so Hermes connects your actual
@@ -194,14 +194,19 @@ makes new ones.
 
 ### Testing the setup flow on EC2
 
+`MISE_ENV=test` loads `mise.test.toml`, which points every task at the test
+server, `homelab-test`, instead of the real one. It joins Tailscale as
+*ephemeral*, so it leaves the tailnet once it's gone.
+
 ```bash
-mise run tf test apply                            # prints `ssh abhishek@<ip>`
-mise run bootstrap --test homelab-1=abhishek@<ip> # then deploy, as above
-mise run tf test destroy                          # when done
+mise run tf test apply                         # prints `ssh abhishek@<ip>`
+MISE_ENV=test mise run bootstrap <ip>
+MISE_ENV=test mise run deploy
+ssh abhishek@homelab-test sudo tailscale logout && mise run tf test destroy   # when done
 ```
 
 The server lets in your GitHub SSH keys (key import can take a minute after
-boot) and costs about $0.025/hour as a `t3.small`. Settings such as the
+boot) and costs about $0.04/hour as a `t3.medium`. Settings such as the
 instance type are in `tf/test/vars.tf`.
 
 ## Services
