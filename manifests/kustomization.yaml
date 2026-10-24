@@ -20,4 +20,4 @@ images:
   - name: ghcr.io/twin/gatus
     newTag: latest
   - name: nousresearch/hermes-agent
-    newTag: v0.22.2   # pinned: `latest` changed how the image starts and broke the deploy
+    newTag: v0.22.5   # pinned: bump deliberately (see the release notes)

@@ -47,12 +47,10 @@ spec:
             # The rest come from 1Password: .env → the homelab-env Secret
             # (`mise run deploy`). Hermes gets only what's listed here, and a
             # missing one stops the pod from starting, naming the key.
-            # Hermes-only settings (allowed Discord users, X, ...) are set in
-            # its dashboard instead and kept in its data folder.
+            # Hermes-only settings (the Discord bot, allowed users, X, ...) are
+            # set in its dashboard instead and kept in its data folder.
             - name: CLAUDE_CODE_OAUTH_TOKEN
               valueFrom: { secretKeyRef: { name: homelab-env, key: CLAUDE_CODE_OAUTH_TOKEN } }
-            - name: DISCORD_BOT_TOKEN
-              valueFrom: { secretKeyRef: { name: homelab-env, key: DISCORD_BOT_TOKEN } }
             # GitHub token for Hermes's own backups: Contents read/write on
             # Abhishek-1804/hermes-backups only
             - name: HERMES_BACKUP_PAT
@@ -65,7 +63,7 @@ spec:
           ports:
             - containerPort: 8642  # gateway / OpenAI-compatible API
             - containerPort: 9119  # web dashboard
-            - containerPort: 3000  # workspace UI
+            - containerPort: 3000  # web pages Hermes serves (tell it: 0.0.0.0, port 3000)
           volumeMounts:
             - name: data
               mountPath: /opt/data   # where the image keeps all Hermes state
@@ -91,6 +89,7 @@ spec:
       port: 9119
       targetPort: 9119
       nodePort: 30008
-    - name: workspace
+    - name: web       # http://homelab-1:30009
       port: 3000
       targetPort: 3000
+      nodePort: 30009

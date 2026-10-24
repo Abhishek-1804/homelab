@@ -15,8 +15,6 @@ tailscale_key = "tailscale_server_key"   # the tf/infra output it joins with
 kubeconfig    = ".kube/kubeconfig-server"
 
 [env]
-# one file per cluster: the server's (`mise run kubeconfig`) and kind's (`mise run kind-deploy`)
-KUBECONFIG = "{{config_root}}/{{vars.kubeconfig}}:{{config_root}}/.kube/kubeconfig-kind-local"
 AWS_PROFILE = "homelab"   # set up by `aws login`
 
 # --- tasks -------------------------------------------------------------------
@@ -53,8 +51,8 @@ fi
 remote {{vars.user}}@{{vars.control_plane}}
 '''
 
-[tasks.kubeconfig]
-description = "Fetch the server's kubeconfig (.kube/kubeconfig-server) so kubectl and k9s here can reach it"
+[tasks.sync-kubeconfig]
+description = "Copy the server's kubeconfig to .kube/ (export KUBECONFIG=<that file> to use it)"
 shell = "bash -euo pipefail -c"
 run = '''
 mkdir -p .kube
@@ -63,12 +61,6 @@ ssh {{vars.user}}@{{vars.control_plane}} sudo cat /etc/rancher/k3s/k3s.yaml \
 chmod 600 {{vars.kubeconfig}}
 KUBECONFIG={{vars.kubeconfig}} kubectl config rename-context default {{vars.control_plane}} >/dev/null
 '''
-
-[tasks.k9s]
-description = "Open k9s on the server's cluster"
-depends = ["kubeconfig"]
-raw = true   # k9s is full-screen
-run = "k9s --context {{vars.control_plane}}"
 
 [tasks.tf]
 description = "Run terraform in tf/<stack>, e.g. `mise run tf infra plan` (sign in first with `aws login`)"
@@ -98,12 +90,12 @@ run = '''
 '''
 
 [tasks.apply]
-description = "Load .env into the homelab-env Secret and apply every manifest, in <context>"
+description = "Load .env into the homelab-env Secret and apply every manifest, with <kubeconfig>"
 hide = true   # run through deploy or kind-deploy
-usage = 'arg "<context>" help="homelab-1 (the server) or kind-homelab (local)"'
+usage = 'arg "<kubeconfig>" help="a kubeconfig file in .kube/"'
 shell = "bash -euo pipefail -c"
 run = '''
-k() { kubectl --context "$usage_context" "$@"; }
+k() { kubectl --kubeconfig "$usage_kubeconfig" "$@"; }
 k apply -f manifests/namespaces.yaml
 # .env is mounted by 1Password; TAILSCALE_* is Terraform's, so it stays out
 secret=$(k -n ai create secret generic homelab-env --from-env-file=<(grep -v '^TAILSCALE_' .env) \
@@ -116,18 +108,18 @@ if [[ $secret == *configured* ]]; then k -n ai rollout restart deploy/hermes-age
 
 [tasks.deploy]
 description = "Load .env into the homelab-env Secret and apply every manifest, on the server"
-depends = ["kubeconfig"]
-run = "mise run apply {{vars.control_plane}}"
+depends = ["sync-kubeconfig"]
+run = "mise run apply {{vars.kubeconfig}}"
 
 [tasks.kind-deploy]
 description = "The same, on a local kind cluster (created if needed); apps on http://localhost:<nodePort>"
 shell = "bash -euo pipefail -c"
 run = '''
-kind get clusters 2>/dev/null | grep -qx homelab \
-    || kind create cluster --config kind-config.yaml --kubeconfig .kube/kubeconfig-kind-local
-mise run apply kind-homelab
+kind get clusters 2>/dev/null | grep -qx homelab || kind create cluster --config kind-config.yaml
+mkdir -p .kube && kind get kubeconfig --name homelab > .kube/kubeconfig-kind-local
+mise run apply .kube/kubeconfig-kind-local
 '''
 
 [tasks.kind-down]
 description = "Delete the local kind cluster"
-run = "kind delete cluster --name homelab --kubeconfig .kube/kubeconfig-kind-local"
+run = "kind delete cluster --name homelab && rm -f .kube/kubeconfig-kind-local"

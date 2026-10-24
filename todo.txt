@@ -1,6 +1,4 @@
-- backups/restore
 - game server
 - cloudflare tunnel for public endpoints
-- only backup persistant volumes?
 - hermes
     - backup updates on another discord channel
