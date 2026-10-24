@@ -10,7 +10,6 @@ resources:
   - monitoring/dozzle.yaml
   - monitoring/homepage.yaml
   - monitoring/beszel.yaml
-  - public/cloudflared.yaml
 
 # Single source of truth for image versions. `name` matches the image in the
 # manifest; `newTag` overrides its version everywhere. Bump versions here only.
@@ -19,8 +18,6 @@ images:
     newTag: "0.21.1"
   - name: henrygd/beszel-agent
     newTag: "0.21.1"
-  - name: cloudflare/cloudflared
-    newTag: "2026.10.3"
   - name: ghcr.io/amir20/dozzle
     newTag: latest
   - name: ghcr.io/gethomepage/homepage

@@ -7,8 +7,3 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: public   # what's reachable from the internet (cloudflared)
